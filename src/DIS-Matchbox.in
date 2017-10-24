@@ -1,0 +1,162 @@
+read Matchbox.in
+
+################################################################################
+# setup the shower
+#
+# use -LO.in or -NLO.in for LO/NLO simulations, respectively.
+#
+################################################################################
+
+read DipoleShower.in
+# read DipoleShowerParameters-LO.in
+read DipoleShowerParameters-NLO.in
+
+################################################################################
+# setup matrix element and matching
+#
+# uncomment the desired calculation
+#
+################################################################################
+
+cd /Herwig/EventHandlers
+
+set DISHandler:BeamA /Herwig/Particles/e+
+set DISLuminosity:BeamEMaxA 27.5.*GeV
+set DISHandler:BeamB /Herwig/Particles/p+
+set DISLuminosity:BeamEMaxB 820.*GeV
+
+cd /Herwig/MatrixElements/Matchbox
+
+insert /Herwig/Generators/DISGenerator:EventHandler:SubProcessHandlers[0] DISFactory
+
+################################################################################
+# 1+1 jets
+################################################################################
+
+set DISFactory:OrderInAlphaS 0
+do DISFactory:Process e+ p e+ j 
+
+################################################################################
+# 2+1 jets
+################################################################################
+
+# set DISFactory:OrderInAlphaS 1
+# do DISFactory:Process e+ p e+ j j
+
+# set DISFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/MaxPtScale
+
+# set /Herwig/Cuts/JetFinder:Variant SphericalKt
+# set /Herwig/Cuts/JetFinder:RecombinationScheme E
+# set /Herwig/Cuts/JetFinder:Mode Inclusive
+# set /Herwig/Cuts/JetFinder:ConeRadius 0.7
+
+# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
+# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/SecondJet
+
+# set /Herwig/Cuts/DISCuts:JetFinder /Herwig/Cuts/JetFinder
+# insert /Herwig/Cuts/DISCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
+
+################################################################################
+# 3+1 jets (leading order only)
+################################################################################
+
+# set DISFactory:OrderInAlphaS 2
+# do DISFactory:Process e+ p e+ j j j
+
+# set DISFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/MaxPtScale
+
+# set /Herwig/Cuts/JetFinder:Variant SphericalKt
+# set /Herwig/Cuts/JetFinder:RecombinationScheme E
+# set /Herwig/Cuts/JetFinder:Mode Inclusive
+# set /Herwig/Cuts/JetFinder:ConeRadius 0.7
+
+# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
+# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/SecondJet
+# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/ThirdJet
+
+# set /Herwig/Cuts/DISCuts:JetFinder /Herwig/Cuts/JetFinder
+# insert /Herwig/Cuts/DISCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
+
+################################################################################
+# leading order
+################################################################################
+
+# set DISFactory:VirtualContributions Off
+# set DISFactory:RealContributions Off
+
+################################################################################
+# MC@NLO-type next-to-leading order
+################################################################################
+
+set DISFactory:ShowerApproximation DipoleMatching
+
+################################################################################
+# POWHEG-type next-to-leading order
+################################################################################
+
+# set DISFactory:ShowerApproximation MEMatching
+# set MECorrectionHandler:Factory DISFactory
+# insert /Herwig/Generators/DISGenerator:EventHandler:PostSubProcessHandlers[0] MECorrectionHandler
+
+################################################################################
+# scale variations
+#
+# see Matchbox.in for different scale choices
+#
+################################################################################
+
+################################################################################
+# hard process scale variations
+################################################################################
+
+set DISFactory:RenormalizationScaleFactor 1.0
+set DISFactory:FactorizationScaleFactor 1.0
+
+################################################################################
+# matching scale variations 
+#  - HardScaleFactor has to equal the one for the shower!
+################################################################################
+
+set DipoleMatching:RenormalizationScaleFactor 1.0
+set DipoleMatching:FactorizationScaleFactor 1.0
+set DipoleMatching:HardScaleFactor 1.0
+
+set MEMatching:RenormalizationScaleFactor 1.0
+set MEMatching:FactorizationScaleFactor 1.0
+set MEMatching:ScreeningScale 10.0*GeV
+
+################################################################################
+# shower scale variations
+################################################################################
+
+set /Herwig/DipoleShower/DipoleShowerHandler:RenormalizationScaleFactor 1.0
+set /Herwig/DipoleShower/DipoleShowerHandler:FactorizationScaleFactor 1.0
+set /Herwig/DipoleShower/DipoleShowerHandler:HardScaleFactor 1.0
+
+################################################################################
+# setup generator and analysis
+#
+#
+#
+################################################################################
+
+cd /Herwig/Generators
+
+set DISGenerator:EventHandler:CascadeHandler /Herwig/DipoleShower/DipoleShowerHandler
+set DISGenerator:EventHandler:CascadeHandler:MPIHandler NULL
+
+set DISGenerator:NumberOfEvents 100000000
+set DISGenerator:RandomNumberGenerator:Seed 31122001
+set DISGenerator:DebugLevel 1
+set DISGenerator:PrintEvent 10
+set DISGenerator:MaxErrors 1000000
+
+cd /Herwig/Generators
+
+#insert DISGenerator:AnalysisHandlers 0 /Herwig/Analysis/HepMCFile
+set /Herwig/Analysis/HepMCFile:PrintEvent 2000000
+set /Herwig/Analysis/HepMCFile:Format GenEvent
+set /Herwig/Analysis/HepMCFile:Units GeV_mm
+set /Herwig/Analysis/HepMCFile:Filename events.fifo
+
+saverun DIS DISGenerator

@@ -1,0 +1,174 @@
+read Matchbox.in
+
+################################################################################
+# setup the shower
+#
+# use -LO.in or -NLO.in for LO/NLO simulations, respectively.
+#
+################################################################################
+
+read DipoleShower.in
+# read DipoleShowerParameters-LO.in
+read DipoleShowerParameters-NLO.in
+
+################################################################################
+# setup matrix element and matching
+#
+# uncomment the desired calculation
+#
+################################################################################
+
+cd /Herwig/EventHandlers
+
+set LHCHandler:LuminosityFunction:Energy 8000.0*GeV
+
+cd /Herwig/MatrixElements/Matchbox
+
+insert /Herwig/Generators/LHCGenerator:EventHandler:SubProcessHandlers[0] PPFactory
+
+################################################################################
+# inclusive Drell-Yan
+################################################################################
+
+set PPFactory:OrderInAlphaS 0
+
+do PPFactory:Process p p l l
+# do PPFactory:Process p p l nu
+
+################################################################################
+# Z/W+1 jet
+################################################################################
+
+# set PPFactory:OrderInAlphaS 1
+# do PPFactory:Process p p l l j
+# do PPFactory:Process p p l nu j
+
+# set PPFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/LeptonPtScale
+
+# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
+
+# set /Herwig/Cuts/QCDCuts:JetFinder /Herwig/Cuts/JetFinder
+# insert /Herwig/Cuts/QCDCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
+
+################################################################################
+# Z/W+2 jets (leading order only)
+################################################################################
+
+# set PPFactory:OrderInAlphaS 2
+# do PPFactory:Process p p l l j j
+# do PPFactory:Process p p l nu j j
+
+# set PPFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/LeptonPtScale
+
+# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
+# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/SecondJet
+
+# set /Herwig/Cuts/QCDCuts:JetFinder /Herwig/Cuts/JetFinder
+# insert /Herwig/Cuts/QCDCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
+
+################################################################################
+# Inclusive QCD Higgs production
+################################################################################
+
+# set PPFactory:OrderInAlphaS 2
+# set PPFactory:OrderInAlphaEW 1
+# do PPFactory:Process p p h0
+# set /Herwig/MatrixElements/Matchbox/Scales/FixedScale:FixedScale 115*GeV
+# set PPFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/FixedScale
+
+################################################################################
+# QCD Higgs+1 jet (leading order only)
+################################################################################
+
+# set PPFactory:OrderInAlphaS 3
+# do PPFactory:Process p p h0 j
+
+# set PPFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/MaxPtScale
+
+# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
+
+# set /Herwig/Cuts/QCDCuts:JetFinder /Herwig/Cuts/JetFinder
+# insert /Herwig/Cuts/QCDCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
+
+################################################################################
+# leading order
+################################################################################
+
+# set PPFactory:VirtualContributions Off
+# set PPFactory:RealContributions Off
+
+################################################################################
+# MC@NLO-type next-to-leading order
+################################################################################
+
+set PPFactory:ShowerApproximation DipoleMatching
+
+################################################################################
+# POWHEG-type next-to-leading order
+################################################################################
+
+# set PPFactory:ShowerApproximation MEMatching
+# set MECorrectionHandler:Factory PPFactory
+# insert /Herwig/Generators/LHCGenerator:EventHandler:PostSubProcessHandlers[0] MECorrectionHandler
+
+################################################################################
+# scale variations
+#
+# see Matchbox.in for different scale choices
+#
+################################################################################
+
+################################################################################
+# hard process scale variations
+################################################################################
+
+set PPFactory:RenormalizationScaleFactor 1.0
+set PPFactory:FactorizationScaleFactor 1.0
+
+################################################################################
+# matching scale variations 
+#  - HardScaleFactor has to equal the one for the shower!
+################################################################################
+
+set DipoleMatching:RenormalizationScaleFactor 1.0
+set DipoleMatching:FactorizationScaleFactor 1.0
+set DipoleMatching:HardScaleFactor 1.0
+
+set MEMatching:RenormalizationScaleFactor 1.0
+set MEMatching:FactorizationScaleFactor 1.0
+set MEMatching:ScreeningScale 10.0*GeV
+
+################################################################################
+# shower scale variations
+################################################################################
+
+set /Herwig/DipoleShower/DipoleShowerHandler:RenormalizationScaleFactor 1.0
+set /Herwig/DipoleShower/DipoleShowerHandler:FactorizationScaleFactor 1.0
+set /Herwig/DipoleShower/DipoleShowerHandler:HardScaleFactor 1.0
+
+################################################################################
+# setup generator and analysis
+#
+#
+#
+################################################################################
+
+cd /Herwig/Generators
+
+set LHCGenerator:EventHandler:CascadeHandler /Herwig/DipoleShower/DipoleShowerHandler
+
+set LHCGenerator:NumberOfEvents 100000000
+set LHCGenerator:RandomNumberGenerator:Seed 31122001
+set LHCGenerator:DebugLevel 1
+set LHCGenerator:PrintEvent 10
+set LHCGenerator:MaxErrors 4000000
+
+cd /Herwig/Generators
+
+#insert LHCGenerator:AnalysisHandlers 0 /Herwig/Analysis/HepMCFile
+set /Herwig/Analysis/HepMCFile:PrintEvent 10000000
+set /Herwig/Analysis/HepMCFile:Format GenEvent
+set /Herwig/Analysis/HepMCFile:Units GeV_mm
+set /Herwig/Analysis/HepMCFile:Filename events.fifo
+
+saverun LHC LHCGenerator
