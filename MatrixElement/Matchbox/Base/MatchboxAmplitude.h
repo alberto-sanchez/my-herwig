@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitude.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitude.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MatchboxAmplitude_H
@@ -14,12 +14,13 @@
 
 #include "ThePEG/MatrixElement/Amplitude.h"
 #include "ThePEG/Handlers/LastXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/ColourBasis.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxXComb.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Utility/ColourBasis.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxXComb.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
@@ -85,7 +86,9 @@ namespace ProcessType {
     treeME2 = 0,
     colourCorrelatedME2,
     spinColourCorrelatedME2,
-    oneLoopInterference
+    oneLoopInterference,
+    loopInducedME2,
+    spinCorrelatedME2
 
   };
 
@@ -134,6 +137,16 @@ public:
 			const vector<Lorentz5Momentum> & momenta, 
 			const vector<int> & helicities);
 
+  /**
+   * Return the factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr factory() const;
+
+  /**
+   * Set the factory which produced this matrix element
+   */
+  virtual void factory(Ptr<MatchboxFactory>::tptr f);
+
   /** @name Subprocess information */
   //@{
 
@@ -141,7 +154,8 @@ public:
    * Return true, if this amplitude can handle the given process.
    */
   virtual bool canHandle(const PDVector& p,
-			 Ptr<MatchboxFactory>::tptr) const { return canHandle(p); }
+			 Ptr<MatchboxFactory>::tptr,
+			 bool) const { return canHandle(p); }
 
   /**
    * Return true, if this amplitude can handle the given process.
@@ -185,20 +199,13 @@ public:
   virtual unsigned int orderInGem() const = 0;
 
   /**
-   * Return the Herwig++ StandardModel object
+   * Return the Herwig StandardModel object
    */
   Ptr<StandardModel>::tcptr standardModel() { 
     if ( !hwStandardModel() )
       hwStandardModel(dynamic_ptr_cast<Ptr<StandardModel>::tcptr>(HandlerBase::standardModel()));
     return hwStandardModel();
   }
-
-  /**
-   * Tell whether the outgoing partons should be sorted when determining
-   * allowed subprocesses. Otherwise, all permutations are counted as
-   * separate subprocesses.
-   */
-  virtual bool sortOutgoing() { return true; }
 
   /**
    * Return true, if this amplitude already includes averaging over
@@ -256,6 +263,31 @@ public:
    */
   virtual bool startOLP(const map<pair<Process,int>,int>& procs);
 
+  /**
+   * Return true, if this amplitude needs to initialize an external
+   * code.
+   */
+  virtual bool isExternal() const { return false; }
+
+  /**
+   * Initialize this amplitude
+   */
+  virtual bool initializeExternal() { return false; }
+
+  /**
+   * Return a generic process id for the given process
+   */
+  virtual int externalId(const cPDVector&) { return 0; }
+
+  /**
+   * Return the map with masses to be used for amplitude evaluation
+   */
+  const map<long,Energy>& reshuffleMasses() const { return theReshuffleMasses; }
+
+  /**
+   * Check if reshuffling is needed at all
+   */
+  void checkReshuffling(Ptr<MatchboxPhasespace>::tptr);
 
   //@}
 
@@ -266,11 +298,6 @@ public:
    * Return the colour basis.
    */
   virtual Ptr<ColourBasis>::tptr colourBasis() const { return theColourBasis; }
-
-  /**
-   * Return true, if this amplitude will not require colour correlations.
-   */
-  virtual bool noCorrelations() const { return !haveOneLoop(); }  
 
   /**
    * Return true, if the colour basis is capable of assigning colour
@@ -296,7 +323,7 @@ public:
    * Return an ordering identifier for the current subprocess and
    * colour absis tensor index.
    */
-  const vector<vector<size_t> >& colourOrdering(size_t id) const;
+  const set<vector<size_t> >& colourOrdering(size_t id) const;
 
   //@}
 
@@ -326,6 +353,12 @@ public:
    */
   virtual set<vector<int> > generateHelicities() const;
 
+  /**
+   * Return the helicity combination of the physical process in the
+   * conventions used by the spin correlation algorithm.
+   */
+  virtual vector<unsigned int> physicalHelicities(const vector<int>&) const;
+
   //@}
 
   /** @name Tree-level amplitudes */
@@ -343,6 +376,21 @@ public:
   virtual double me2() const;
 
   /**
+   * Return the colour charge of a given leg
+   */
+  double colourCharge(tcPDPtr) const;
+
+  /**
+   * Return the large-N charge of a given leg
+   */
+  double largeNColourCharge(tcPDPtr) const;
+  
+  /**
+   * Return the largeN matrix element squared.
+   */
+  virtual double largeNME2(Ptr<ColourBasis>::tptr largeNBasis) const;
+
+  /**
    * Return the colour correlated matrix element.
    */
   virtual double colourCorrelatedME2(pair<int,int> ij) const;
@@ -352,6 +400,17 @@ public:
    */
   virtual double largeNColourCorrelatedME2(pair<int,int> ij,
 					   Ptr<ColourBasis>::tptr largeNBasis) const;
+
+  /**
+   * Return true if trivial colour configuration.
+   */
+  bool trivialColourLegs() const { return theTrivialColourLegs; }
+
+  /**
+   * Return true, if this amplitude is capable of consistently filling
+   * the rho matrices for the spin correllations
+   */
+  virtual bool canFillRhoMatrix() const { return false; }
 
   /**
    * Return a positive helicity polarization vector for a gluon of
@@ -367,6 +426,12 @@ public:
    */
   virtual double spinColourCorrelatedME2(pair<int,int> emitterSpectator,
 					 const SpinCorrelationTensor& c) const;
+
+  /**
+   * Return the spin correlated matrix element.
+   */
+  virtual double spinCorrelatedME2(pair<int,int> emitterSpectator,
+				   const SpinCorrelationTensor& c) const;
 
 
   /**
@@ -384,6 +449,18 @@ public:
 
   /** @name One-loop amplitudes */
   //@{
+
+  /**
+   * Return the one-loop amplitude, if applicable.
+   */
+  virtual Ptr<MatchboxAmplitude>::tptr oneLoopAmplitude() const {
+    return Ptr<MatchboxAmplitude>::tptr();
+  }
+
+  /**
+   * Diasble one-loop functionality if not needed.
+   */
+  virtual void disableOneLoop() {}
 
   /**
    * Return true, if this amplitude is capable of calculating one-loop
@@ -411,6 +488,12 @@ public:
   virtual bool isDR() const { return false; }
 
   /**
+   * Return true, if the amplitude is DRbar renormalized, otherwise
+   * MSbar is assumed.
+   */
+  virtual bool isDRbar() const { return true; }
+
+  /**
    * Return true, if one loop corrections are given in the conventions
    * of the integrated dipoles.
    */
@@ -434,6 +517,16 @@ public:
    * restored in DipoleIOperator.
    */
   virtual Energy2 mu2() const { return 0.*GeV2; }
+
+  /**
+   * Indicate that this amplitude is running alphas by itself.
+   */
+  virtual bool hasRunningAlphaS() const { return false; }
+
+  /**
+   * Indicate that this amplitude is running alphaew by itself.
+   */
+  virtual bool hasRunningAlphaEW() const { return false; }
 
   /**
    * If defined, return the coefficient of the pole in epsilon^2
@@ -482,7 +575,7 @@ public:
   /**
    * Clone the dependencies, using a given prefix.
    */
-  virtual void cloneDependencies(const std::string& prefix = "");
+  virtual void cloneDependencies(const std::string& prefix="" , bool slim=false);
 
   //@}
 
@@ -515,7 +608,31 @@ public:
 // If needed, insert declarations of virtual function defined in the
 // InterfacedBase class here (using ThePEG-interfaced-decl in Emacs).
 
+protected:
+
+  /** @name Standard Interfaced functions. */
+  //@{
+
+  /**
+   * Initialize this object after the setup phase before saving an
+   * EventGenerator to disk.
+   * @throws InitException if object could not be initialized properly.
+   */
+  virtual void doinit();
+
+  /**
+   * Initialize this object. Called in the run phase just before
+   * a run begins.
+   */
+  virtual void doinitrun();
+  //@}
+
 private:
+
+  /**
+   * The factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr theFactory;
 
   /**
    * Recursively generate helicities
@@ -528,6 +645,54 @@ private:
    * The colour basis implementation to be used.
    */
   Ptr<ColourBasis>::ptr theColourBasis;
+
+  /**
+   * The number of points after which helicity combinations wil be
+   * cleaned up
+   */
+  int theCleanupAfter;
+  
+  /**
+   * The number of points that are calculated before a certain
+   * helicity is excluded.  Needed in pp->V
+   */
+  int treeLevelHelicityPoints;
+
+  /**
+   * The number of points that are calculated before a certain
+   * helicity is excluded.  Needed in pp->V
+   */
+  int oneLoopHelicityPoints;
+
+  /**
+   * The map with masses to be used for amplitude evaluation
+   */
+  map<long,Energy> theReshuffleMasses;
+
+  /**
+   * True if trivial colour configuration.
+   */
+  bool theTrivialColourLegs;
+
+  /**
+   * A command to fill the reshuffle mass map
+   */
+  string doReshuffle(string);
+
+  /**
+   * A command to fill the reshuffle mass map
+   */
+  string doMassless(string);
+
+  /**
+   * A command to fill the reshuffle mass map
+   */
+  string doOnShell(string);
+
+  /**
+   * Clear the reshuffling map
+   */
+  string doClearReshuffling(string);
 
   /**
    * The assignment operator is private and must never be called.

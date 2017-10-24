@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TTbAModelSU2XVertex.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// TTbAModelSU2XVertex.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -93,7 +93,7 @@ void TTbAModelSU2XVertex::setCoupling(Energy2,tcPDPtr aa ,tcPDPtr bb, tcPDPtr cc
   double st = sqrt(1 - pow(ct,2)); 
 
   //Vz
-  if( fabs(aa->id()) == 70 || fabs(bb->id()) == 70 || fabs(cc->id()) == 70) { 
+  if( abs(aa->id()) == 70 || abs(bb->id()) == 70 || abs(cc->id()) == 70) { 
     _fac = _gX / 2.0; 
     if( aa->id() == 6 || bb->id() == 6 || cc->id() == 6) {
       if( aa->id() == -6 || bb->id() == -6 || cc->id() == -6) {
@@ -105,8 +105,8 @@ void TTbAModelSU2XVertex::setCoupling(Energy2,tcPDPtr aa ,tcPDPtr bb, tcPDPtr cc
 	_cR = pow(st,2) - pow(ct,2);
       }
     }
-    if( fabs(aa->id()) == 2 || fabs(bb->id()) == 2 || fabs(cc->id()) == 2) {
-      if( fabs(aa->id()) == 6 || fabs(bb->id()) == 6 || fabs(cc->id()) == 6) {
+    if( abs(aa->id()) == 2 || abs(bb->id()) == 2 || abs(cc->id()) == 2) {
+      if( abs(aa->id()) == 6 || abs(bb->id()) == 6 || abs(cc->id()) == 6) {
 	_cR = 2 * ct * st;
       }
     }

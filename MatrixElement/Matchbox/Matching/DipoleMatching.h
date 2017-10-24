@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipoleMatching.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipoleMatching.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_DipoleMatching_H
@@ -12,8 +12,8 @@
 // This is the declaration of the DipoleMatching class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/ColourBasis.h"
+#include "Herwig/Shower/ShowerHandler.h"
+#include "Herwig/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
 
 namespace Herwig {
 
@@ -23,7 +23,7 @@ using namespace ThePEG;
  * \ingroup Matchbox
  * \author Simon Platzer
  *
- * \brief DipoleMatching implements naive NLO matching with the dipole shower.
+ * \brief DipoleMatching implements NLO matching with the dipole shower.
  *
  */
 class DipoleMatching: public Herwig::ShowerApproximation {
@@ -107,25 +107,31 @@ protected:
 // If needed, insert declarations of virtual function defined in the
 // InterfacedBase class here (using ThePEG-interfaced-decl in Emacs).
 
+protected:
+
+  /** @name Standard Interfaced functions. */
+  //@{
+  /**
+   * Initialize this object after the setup phase before saving an
+   * EventGenerator to disk.
+   * @throws InitException if object could not be initialized properly.
+   */
+  virtual void doinit();
+  //@}
+
 
 private:
+
+  /**
+   * The shower handler to be used
+   */
+  Ptr<ShowerHandler>::ptr theShowerHandler;
 
   /**
    * The assignment operator is private and must never be called.
    * In fact, it should not even be implemented.
    */
   DipoleMatching & operator=(const DipoleMatching &);
-
-  /**
-   * True, if the shower kernels should be reproduced.
-   */
-  bool theShowerKernels;
-
-  /**
-   * A large-N colour basis to be used when reproducing the shower
-   * kernels.
-   */
-  Ptr<ColourBasis>::ptr theLargeNBasis;
 
 };
 

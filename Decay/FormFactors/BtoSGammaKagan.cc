@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// BtoSGammaKagan.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// BtoSGammaKagan.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -12,7 +12,7 @@
 //
 
 #include "BtoSGammaKagan.h"
-#include "Herwig++/Utilities/Maths.h"
+#include "Herwig/Utilities/Maths.h"
 #include "ThePEG/Interface/Parameter.h"
 #include "ThePEG/Interface/ParVector.h"
 #include "ThePEG/Interface/Switch.h"
@@ -21,7 +21,7 @@
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/Utilities/GaussianIntegrator.h"
+#include "Herwig/Utilities/GaussianIntegrator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
 
 using namespace Herwig;
@@ -434,8 +434,8 @@ void BtoSGammaKagan::doinit() {
 Energy BtoSGammaKagan::hadronicMass(Energy mb,Energy mquark) {
   useMe();
   Energy minmass(max(minMass(),mquark)),maxmass(min(maxMass(),mb)),mass;
-  Energy minegamma(0.5*_MB*(1. - _deltacut)),maxegamma(0.5*_MB);
-  minmass=max(minmass,sqrt(_MB*_MB-2.*_MB*maxegamma));
+  Energy minegamma(0.5*_MB*(1. - _deltacut));//,maxegamma(0.5*_MB);
+  minmass=max(minmass,ZERO); // ZERO==sqrt(_MB*_MB-2.*_MB*maxegamma));
   maxmass=min(maxmass,sqrt(_MB*_MB-2.*_MB*minegamma));
   unsigned int ntry(0);
   double rand;

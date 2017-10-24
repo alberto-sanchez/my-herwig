@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxHybridAmplitude.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxHybridAmplitude.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MatchboxHybridAmplitude_H
@@ -12,7 +12,7 @@
 // This is the declaration of the MatchboxHybridAmplitude class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
 
 namespace Herwig {
 
@@ -48,6 +48,11 @@ public:
 public:
 
   /**
+   * Set the factory which produced this matrix element
+   */
+  virtual void factory(Ptr<MatchboxFactory>::tptr f);
+
+  /**
    * Return the amplitude object to provide tree-level amplitudes.
    */
   Ptr<MatchboxAmplitude>::tptr treeLevelAmplitude() const { return theTreeLevelAmplitude; }
@@ -60,7 +65,7 @@ public:
   /**
    * Return the amplitude object to provide one-loop amplitudes.
    */
-  Ptr<MatchboxAmplitude>::tptr oneLoopAmplitude() const { return theOneLoopAmplitude; }
+  virtual Ptr<MatchboxAmplitude>::tptr oneLoopAmplitude() const { return theOneLoopAmplitude; }
 
   /**
    * Set the amplitude object to provide one-loop amplitudes.
@@ -82,18 +87,16 @@ public:
    * Return true, if this amplitude can handle the given process.
    */
   virtual bool canHandle(const PDVector& p,
-			 Ptr<MatchboxFactory>::tptr f) const { 
-    return 
-      treeLevelAmplitude()->canHandle(p,f) &&
-      oneLoopAmplitude()->canHandle(p,f) &&
-      isConsistent();
-  }
+			 Ptr<MatchboxFactory>::tptr f,
+			 bool virt) const;
 
   /**
    * Return the number of random numbers required to evaluate this
    * amplitude at a fixed phase space point.
    */
-  virtual int nDimAdditional() const { 
+  virtual int nDimAdditional() const {
+    if ( !oneLoopAmplitude() )
+      return treeLevelAmplitude()->nDimAdditional();
     return
       treeLevelAmplitude()->nDimAdditional() ?
       treeLevelAmplitude()->nDimAdditional() :
@@ -114,7 +117,8 @@ public:
    */
   virtual void orderInGs(unsigned int n) {
     treeLevelAmplitude()->orderInGs(n);
-    oneLoopAmplitude()->orderInGs(n);
+    if ( oneLoopAmplitude() )
+      oneLoopAmplitude()->orderInGs(n);
   }
 
   /**
@@ -131,7 +135,8 @@ public:
    */
   virtual void orderInGem(unsigned int n) {
     treeLevelAmplitude()->orderInGem(n);
-    oneLoopAmplitude()->orderInGem(n);
+    if ( oneLoopAmplitude() )
+      oneLoopAmplitude()->orderInGem(n);
   }
 
   /**
@@ -140,15 +145,6 @@ public:
    */
   virtual unsigned int orderInGem() const {
     return treeLevelAmplitude()->orderInGem();
-  }
-
-  /**
-   * Tell whether the outgoing partons should be sorted when determining
-   * allowed subprocesses. Otherwise, all permutations are counted as
-   * separate subprocesses.
-   */
-  virtual bool sortOutgoing() {
-    return treeLevelAmplitude()->sortOutgoing();
   }
 
   /**
@@ -176,6 +172,8 @@ public:
    * Return true, if this amplitude is handled by a BLHA one-loop provider
    */
   virtual bool isOLPLoop() const { 
+    if ( !oneLoopAmplitude() )
+      return false;
     return oneLoopAmplitude()->isOLPLoop();
   }
 
@@ -183,14 +181,39 @@ public:
    * Return true, if colour and spin correlated matrix elements should
    * be ordered from the OLP
    */
-  virtual bool needsOLPCorrelators() const { return false; }
+  virtual bool needsOLPCorrelators() const { 
+    return theUseOLPCorrelators;
+  }
 
   /**
    * Start the one loop provider, if appropriate. This default
    * implementation writes an BLHA 2.0 order file and starts the OLP
    */
   virtual bool startOLP(const map<pair<Process,int>,int>& procs) {
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->startOLP(procs);
+  }
+
+  /**
+   * Return true, if this amplitude needs to initialize an external
+   * code.
+   */
+  virtual bool isExternal() const { 
+    return treeLevelAmplitude()->isExternal();
+  }
+
+  /**
+   * Initialize this amplitude
+   */
+  virtual bool initializeExternal() {
+    return treeLevelAmplitude()->initializeExternal();
+  }
+
+  /**
+   * Return a generic process id for the given process
+   */
+  virtual int externalId(const cPDVector& proc) { 
+    return treeLevelAmplitude()->externalId(proc);
   }
 
   //@}
@@ -231,7 +254,9 @@ public:
    */
   virtual void setXComb(tStdXCombPtr xc) {
     treeLevelAmplitude()->setXComb(xc);
-    oneLoopAmplitude()->setXComb(xc);
+    if ( oneLoopAmplitude() )
+      oneLoopAmplitude()->setXComb(xc);
+    lastMatchboxXComb(xc);
   }
 
   /**
@@ -263,10 +288,20 @@ public:
   }
 
   /**
+   * Return the largeN matrix element squared.
+   */
+  virtual double largeNME2(Ptr<ColourBasis>::tptr largeNBasis) const {
+    return treeLevelAmplitude()->largeNME2(largeNBasis);
+  }
+
+  /**
    * Return the colour correlated matrix element.
    */
   virtual double colourCorrelatedME2(pair<int,int> ij) const {
-    return treeLevelAmplitude()->colourCorrelatedME2(ij);
+    return 
+      theUseOLPCorrelators ?
+      oneLoopAmplitude()->colourCorrelatedME2(ij) :
+      treeLevelAmplitude()->colourCorrelatedME2(ij);
   }
 
   /**
@@ -285,7 +320,10 @@ public:
   virtual LorentzVector<Complex> plusPolarization(const Lorentz5Momentum& p,
 						  const Lorentz5Momentum& n,
 						  int id = -1) const {
-    return treeLevelAmplitude()->plusPolarization(p,n,id);
+    return 
+      theUseOLPCorrelators ?
+      oneLoopAmplitude()->plusPolarization(p,n,id) :
+      treeLevelAmplitude()->plusPolarization(p,n,id);
   }
 
   /**
@@ -293,9 +331,38 @@ public:
    */
   virtual double spinColourCorrelatedME2(pair<int,int> emitterSpectator,
 					 const SpinCorrelationTensor& c) const {
-    return treeLevelAmplitude()->spinColourCorrelatedME2(emitterSpectator,c);
+    return 
+      theUseOLPCorrelators ?
+      oneLoopAmplitude()->spinColourCorrelatedME2(emitterSpectator,c) :
+      treeLevelAmplitude()->spinColourCorrelatedME2(emitterSpectator,c);
   }
 
+  /**
+   * Return the spin correlated matrix element.
+   */
+  virtual double spinCorrelatedME2(pair<int,int> emitterSpectator,
+				   const SpinCorrelationTensor& c) const {
+    return 
+      theUseOLPCorrelators ?
+      oneLoopAmplitude()->spinCorrelatedME2(emitterSpectator,c) :
+      treeLevelAmplitude()->spinCorrelatedME2(emitterSpectator,c);
+  }
+
+  /**
+   * Return true, if this amplitude is capable of consistently filling
+   * the rho matrices for the spin correllations
+   */
+  virtual bool canFillRhoMatrix() const { 
+    return treeLevelAmplitude()->canFillRhoMatrix();
+  }
+
+  /**
+   * Return the helicity combination of the physical process in the
+   * conventions used by the spin correlation algorithm.
+   */
+  virtual vector<unsigned int> physicalHelicities(const vector<int>& hel) const {
+    return treeLevelAmplitude()->physicalHelicities(hel);
+  }
 
   /**
    * Return true, if tree-level contributions will be evaluated at amplitude level.
@@ -318,10 +385,15 @@ public:
   //@{
 
   /**
+   * Diasble one-loop functionality if not needed.
+   */
+  virtual void disableOneLoop() { oneLoopAmplitude(Ptr<MatchboxAmplitude>::ptr()); }
+
+  /**
    * Return true, if this amplitude is capable of calculating one-loop
    * (QCD) corrections.
    */
-  virtual bool haveOneLoop() const { return true; }
+  virtual bool haveOneLoop() const { return oneLoopAmplitude(); }
 
   /**
    * Return true, if this amplitude only provides
@@ -333,7 +405,17 @@ public:
    * Return true, if one-loop contributions will be evaluated at amplitude level.
    */
   virtual bool oneLoopAmplitudes() const { 
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->oneLoopAmplitudes();
+  }
+
+  /**
+   * Return true, if the amplitude is DRbar renormalized, otherwise
+   * MSbar is assumed.
+   */
+  virtual bool isDRbar() const { 
+    assert(oneLoopAmplitude());
+    return oneLoopAmplitude()->isDRbar();
   }
 
   /**
@@ -343,6 +425,7 @@ public:
    * assumed to be MSbar.
    */
   virtual bool isDR() const { 
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->isDR();
   }
 
@@ -351,6 +434,7 @@ public:
    * of the integrated dipoles.
    */
   virtual bool isCS() const { 
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->isCS();
   }
 
@@ -359,6 +443,7 @@ public:
    * of BDK.
    */
   virtual bool isBDK() const { 
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->isBDK();
   }
 
@@ -367,6 +452,7 @@ public:
    * of everything expanded.
    */
   virtual bool isExpanded() const { 
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->isExpanded();
   }
 
@@ -375,22 +461,45 @@ public:
    * parameter. Note that renormalization scale dependence is fully
    * restored in DipoleIOperator.
    */
-  virtual Energy2 mu2() const { 
+  virtual Energy2 mu2() const {
+    assert(oneLoopAmplitude()); 
     return oneLoopAmplitude()->mu2();
+  }
+
+  /**
+   * Adjust the virtual symmetry factor conventions to the tree level
+   * one
+   */
+  double symmetryRatio() const;
+
+  /**
+   * Indicate that this amplitude is running alphas by itself.
+   */
+  virtual bool hasRunningAlphaS() const { 
+    return treeLevelAmplitude()->hasRunningAlphaS();
+  }
+
+  /**
+   * Indicate that this amplitude is running alphaew by itself.
+   */
+  virtual bool hasRunningAlphaEW() const { 
+    return treeLevelAmplitude()->hasRunningAlphaEW();
   }
 
   /**
    * If defined, return the coefficient of the pole in epsilon^2
    */
   virtual double oneLoopDoublePole() const { 
-    return oneLoopAmplitude()->oneLoopDoublePole();
+    assert(oneLoopAmplitude());
+    return symmetryRatio()*oneLoopAmplitude()->oneLoopDoublePole();
   }
 
   /**
    * If defined, return the coefficient of the pole in epsilon
    */
   virtual double oneLoopSinglePole() const { 
-    return oneLoopAmplitude()->oneLoopSinglePole();
+    assert(oneLoopAmplitude());
+    return symmetryRatio()*oneLoopAmplitude()->oneLoopSinglePole();
   }
 
   /**
@@ -403,7 +512,8 @@ public:
    * Return the one-loop/tree interference.
    */
   virtual double oneLoopInterference() const {
-    return oneLoopAmplitude()->oneLoopInterference();
+    assert(oneLoopAmplitude());
+    return symmetryRatio()*oneLoopAmplitude()->oneLoopInterference();
   }
 
   /**
@@ -411,6 +521,7 @@ public:
    * helicity assignment
    */
   virtual Complex evaluateOneLoop(size_t a, const vector<int>& hel) { 
+    assert(oneLoopAmplitude());
     return oneLoopAmplitude()->evaluateOneLoop(a,hel);
   }
 
@@ -424,9 +535,33 @@ public:
    */
   virtual void flushCaches() {
     treeLevelAmplitude()->flushCaches();
-    oneLoopAmplitude()->flushCaches();
+    if ( oneLoopAmplitude() )
+      oneLoopAmplitude()->flushCaches();
   }
 
+  /**
+   * Clone the dependencies, using a given prefix.
+   */
+  virtual void cloneDependencies(const std::string& prefix= "" , bool slim=false);
+  //@}
+
+protected:
+
+  /** @name Standard Interfaced functions. */
+  //@{
+
+  /**
+   * Initialize this object after the setup phase before saving an
+   * EventGenerator to disk.
+   * @throws InitException if object could not be initialized properly.
+   */
+  virtual void doinit();
+
+  /**
+   * Initialize this object. Called in the run phase just before
+   * a run begins.
+   */
+  virtual void doinitrun();
   //@}
 
 public:
@@ -488,6 +623,11 @@ private:
    * The amplitude object to provide one-loop amplitudes.
    */
   Ptr<MatchboxAmplitude>::ptr theOneLoopAmplitude;
+
+  /**
+   * True, if correlators should be used from the OLP amplitude
+   */
+  bool theUseOLPCorrelators;
 
   /**
    * The assignment operator is private and must never be called.

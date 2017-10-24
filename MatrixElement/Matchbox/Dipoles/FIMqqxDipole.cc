@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FIMqqxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FIMqqxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,10 +20,10 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FILightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FILightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FIMassiveTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FIMassiveInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -44,12 +44,15 @@ bool FIMqqxDipole::canHandle(const cPDVector& partons,
 			    int emitter, int emission, int spectator) const {
   return
     emitter > 1 && spectator < 2 &&
-    abs(partons[emission]->id()) < 6 &&
-    abs(partons[emitter]->id()) < 6 &&
+    abs(partons[emission]->id()) < 7 &&
+    abs(partons[emitter]->id()) < 7 &&
     partons[emission]->id() + partons[emitter]->id() == 0 &&
-    !(partons[emitter]->mass() == ZERO &&
-      partons[emission]->mass() == ZERO &&
-      partons[spectator]->mass() == ZERO);
+//    !(partons[emitter]->hardProcessMass() == ZERO &&
+//      partons[emission]->hardProcessMass() == ZERO &&
+//      partons[spectator]->hardProcessMass() == ZERO);
+    !(partons[emitter]->hardProcessMass() == ZERO &&
+      partons[emission]->hardProcessMass() == ZERO) &&
+      partons[spectator]->hardProcessMass() == ZERO;
 }
 
 double FIMqqxDipole::me2Avg(double ccme2) const {
@@ -64,16 +67,17 @@ double FIMqqxDipole::me2Avg(double ccme2) const {
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
 
-  Energy2 mQ2 = sqr(realEmissionME()->lastXComb().mePartonData()[realEmitter()]->mass());
-  double muQ2 = x * mQ2 /
+  Energy2 mQ2 = sqr(realEmissionME()->lastXComb().mePartonData()[realEmitter()]->hardProcessMass());
+//  double muQ2 = x * mQ2 /
+  double muQ2 = 0.5 * z * mQ2 /
     ((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
      (realEmissionME()->lastXComb().meMomenta()[realSpectator()]));
 
   // mu_ij=0, mu_i=mu_j=mu_Q.
-  double zm = ( 1.-x - sqrt( sqr(1.-x-2.*muQ2) - 4.*muQ2 ) ) /
-    ( 2.*(1.-x) );
-  double zp = ( 1.-x + sqrt( sqr(1.-x-2.*muQ2) - 4.*muQ2 ) ) /
-    ( 2.*(1.-x) );
+//  double zm = ( 1.-x - sqrt( sqr(1.-x-2.*muQ2) - 4.*muQ2 ) ) / ( 2.*(1.-x) );
+//  double zp = ( 1.-x + sqrt( sqr(1.-x-2.*muQ2) - 4.*muQ2 ) ) / ( 2.*(1.-x) );
+  double zm = ( 1.-x - sqrt( sqr(1.-x-2.*muQ2) - 4.*sqr(muQ2) ) ) / ( 2.*(1.-x) );
+  double zp = ( 1.-x + sqrt( sqr(1.-x-2.*muQ2) - 4.*sqr(muQ2) ) ) / ( 2.*(1.-x) );
 
   double res = 1.-2.*(z-zm)*(zp-z);
 
@@ -106,7 +110,7 @@ double FIMqqxDipole::me2() const {
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
 
-  Energy2 mQ2 = sqr((realEmissionME()->lastXComb().mePartonData()[realEmitter()])->mass());
+  Energy2 mQ2 = sqr((realEmissionME()->lastXComb().mePartonData()[realEmitter()])->hardProcessMass());
 
   Lorentz5Momentum pc = 
     z*realEmissionME()->lastXComb().meMomenta()[realEmitter()] -
@@ -143,8 +147,10 @@ void FIMqqxDipole::Init() {
   static ClassDocumentation<FIMqqxDipole> documentation
     ("FIMqqxDipole");
 
-  DipoleRepository::registerDipole<0,FIMqqxDipole,FILightTildeKinematics,FILightInvertedTildeKinematics>
-    ("FIMqqxDipole","FILightTildeKinematics","FILightInvertedTildeKinematics");
+//  DipoleRepository::registerDipole<0,FIMqqxDipole,FILightTildeKinematics,FILightInvertedTildeKinematics>
+//    ("FIMqqxDipole","FILightTildeKinematics","FILightInvertedTildeKinematics");
+  DipoleRepository::registerDipole<0,FIMqqxDipole,FIMassiveTildeKinematics,FIMassiveInvertedTildeKinematics>
+    ("FIMqqxDipole","FIMassiveTildeKinematics","FIMassiveInvertedTildeKinematics");
 
 }
 
@@ -154,4 +160,4 @@ void FIMqqxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FIMqqxDipole,SubtractionDipole>
-describeHerwigFIMqqxDipole("Herwig::FIMqqxDipole", "HwMatchbox.so");
+describeHerwigFIMqqxDipole("Herwig::FIMqqxDipole", "Herwig.so");

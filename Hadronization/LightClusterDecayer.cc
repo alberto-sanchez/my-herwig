@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// LightClusterDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// LightClusterDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -15,13 +15,14 @@
 #include <ThePEG/Interface/ClassDocumentation.h>
 #include <ThePEG/Interface/Parameter.h>
 #include <ThePEG/Interface/Reference.h>
+#include <ThePEG/Interface/Switch.h>
 #include <ThePEG/Persistency/PersistentOStream.h>
 #include <ThePEG/Persistency/PersistentIStream.h>
 #include <ThePEG/PDT/EnumParticles.h>
 #include <ThePEG/Repository/EventGenerator.h>
 #include "Cluster.h"
 #include "CheckId.h"
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
 #include <ThePEG/Utilities/DescribeClass.h>
 
 using namespace Herwig;
@@ -39,11 +40,11 @@ IBPtr LightClusterDecayer::fullclone() const {
 
 
 void LightClusterDecayer::persistentOutput(PersistentOStream & os) const {
-  os << _hadronSelector << _limBottom << _limCharm << _limExotic;
+  os << _hadronSelector;
 } 
 
 void LightClusterDecayer::persistentInput(PersistentIStream & is, int) {
-  is >> _hadronSelector >> _limBottom >> _limCharm >> _limExotic ;
+  is >> _hadronSelector;
 }
 
 void LightClusterDecayer::Init() {
@@ -56,19 +57,8 @@ void LightClusterDecayer::Init() {
 			     "A reference to the HadronSelector object", 
 			     &Herwig::LightClusterDecayer::_hadronSelector,
 			     false, false, true, false);
-  
-static Parameter<LightClusterDecayer,double>
-    interfaceSingleHadronLimitBottom ("SingleHadronLimitBottom","threshold for one-hadron decay of b-cluster",
-                    &LightClusterDecayer::_limBottom, 0, 0.0, 0.0, 100.0,false,false,false);
-static Parameter<LightClusterDecayer,double>
-    interfaceSingleHadronLimitCharm ("SingleHadronLimitCharm","threshold for one-hadron decay of c-cluster",
-                    &LightClusterDecayer::_limCharm, 0, 0.0, 0.0, 100.0,false,false,false);
-static Parameter<LightClusterDecayer,double>
-    interfaceSingleHadronLimitExotic ("SingleHadronLimitExotic","threshold for one-hadron decay of exotic cluster",
-                    &LightClusterDecayer::_limExotic, 0, 0.0, 0.0, 100.0,false,false,false);
 
 }
-
 
 bool LightClusterDecayer::decay(ClusterVector & clusters, tPVector & finalhadrons) {
 
@@ -127,34 +117,13 @@ bool LightClusterDecayer::decay(ClusterVector & clusters, tPVector & finalhadron
       continue;
     }
     
-    // Extract the  particle pointer of the two components of the cluster.
-    
-    tPPtr ptrQ1 = (*it)->particle(0);
-    tPPtr ptrQ2 = (*it)->particle(1);
+    // select the hadron for single hadron decay
+    tcPDPtr hadron = _hadronSelector->chooseSingleHadron((*it)->particle(0)->dataPtr(),
+							 (*it)->particle(1)->dataPtr(),
+							 (**it).mass());
+    // if not single decay continue
+    if(!hadron) continue;
 
-     tcPDPtr par1 = ptrQ1->dataPtr();
-     tcPDPtr par2 = ptrQ2->dataPtr();
-      
-    // Determine the sum of the nominal masses of the two lightest hadrons
-    // with the right flavour numbers as the cluster under consideration.
-    // Notice that we don't need real masses (drawn by a Breit-Wigner 
-    // distribution) because the lightest pair of hadrons does not involve
-    // any broad resonance.
-     Energy threshold = _hadronSelector->massLightestHadronPair(par1,par2);
-     // Special: it allows one-hadron decays also above threshold.
-     if (CheckId::isExotic(par1,par2)) 
-       threshold *= (1.0 + UseRandom::rnd()*_limExotic);
-     else if (CheckId::hasBottom(par1,par2)) 
-       threshold *= (1.0 + UseRandom::rnd()*_limBottom);
-     else if (CheckId::hasCharm(par1,par2)) 
-       threshold *= (1.0 + UseRandom::rnd()*_limCharm);
-     
-    
-    // only do one hadron decay is mass less than the threshold
-    if((*it)->mass()>=threshold) continue;
-    
-    tcPDPtr hadron= _hadronSelector->lightestHadron(par1,par2);
-    
     // We assume that the candidate reshuffling cluster partner, 
     // with whom the light cluster can exchange momenta,
     // is chosen as the closest in space-time between the available
@@ -279,9 +248,9 @@ bool LightClusterDecayer::reshuffling(const tcPDPtr pdata1,
   
   Kinematics::twoBodyDecay(pSystem, mhad1, mclu2, u.vect().unit(), phad1, pclu2);
 
-  ptrhad1->set5Momentum( phad1 );               // set momentum of first hadron.
-  ptrhad1->setLabVertex(cluPtr1->vertex()); // set hadron vertex position to the
-                                                // parent cluster position.
+  ptrhad1->set5Momentum( phad1 );        // set momentum of first hadron.
+  ptrhad1->setVertex(cluPtr1->vertex()); // set hadron vertex position to the
+                                         // parent cluster position.
   cluPtr1->addChild(ptrhad1);
   finalhadrons.push_back(ptrhad1);
   cluPtr1->flagAsReshuffled();
@@ -298,8 +267,8 @@ bool LightClusterDecayer::reshuffling(const tcPDPtr pdata1,
     PPtr ptrhad2 = _hadronSelector->lightestHadron(part3->dataPtr(),part4->dataPtr())
       ->produceParticle();
     ptrhad2->set5Momentum( pclu2 );            
-    ptrhad2->setLabVertex( cluPtr2->vertex() ); // set hadron vertex position to the
-                                                  // parent cluster position.
+    ptrhad2->setVertex( cluPtr2->vertex() ); // set hadron vertex position to the
+                                             // parent cluster position.
     cluPtr2->addChild(ptrhad2);  
     finalhadrons.push_back(ptrhad2);
   } else {

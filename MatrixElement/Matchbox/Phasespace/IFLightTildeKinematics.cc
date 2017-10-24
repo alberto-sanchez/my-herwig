@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IFLightTildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IFLightTildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -68,6 +68,33 @@ Energy IFLightTildeKinematics::lastPt() const {
 
 }
 
+Energy IFLightTildeKinematics::lastPt(Lorentz5Momentum emitter,Lorentz5Momentum emission,Lorentz5Momentum spectator)const {
+
+  
+  double x =
+  (- emission*spectator + emitter*spectator + emitter*emission) /
+  (emitter*emission + emitter*spectator);
+  double u = emitter*emission / (emitter*emission + emitter*spectator);
+  
+  Energy scale = sqrt(2.*(emission*emitter-emission*spectator+emitter*spectator));
+  
+  return scale * sqrt(u*(1.-u)*(1.-x)/x);
+}
+
+pair<double,double> IFLightTildeKinematics::zBounds(Energy pt, Energy hardPt) const {
+  if(pt>hardPt) return make_pair(0.5,0.5);
+  double s = sqrt(1.-sqr(pt/hardPt));
+  double x = emitterX();
+  return make_pair(0.5*(1.+x-(1.-x)*s),0.5*(1.+x+(1.-x)*s));
+}
+
+
+
+double IFLightTildeKinematics::lastZ() const {
+  double x = subtractionParameters()[0];
+  double u = subtractionParameters()[1];
+  return 1. - (1.-x)*(1.-u);
+}
 
 // If needed, insert default implementations of virtual function defined
 // in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
@@ -93,4 +120,4 @@ void IFLightTildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IFLightTildeKinematics,TildeKinematics>
-describeHerwigIFLightTildeKinematics("Herwig::IFLightTildeKinematics", "HwMatchbox.so");
+describeHerwigIFLightTildeKinematics("Herwig::IFLightTildeKinematics", "Herwig.so");

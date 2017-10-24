@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxReference.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxReference.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MatchboxReference_H
@@ -12,7 +12,7 @@
 // This is the declaration of the MatchboxReference class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
 
 namespace Herwig {
 
@@ -54,12 +54,14 @@ public:
    * Return the number of random numbers required to produce a given
    * multiplicity final state.
    */
-  virtual int nDim(int nFinal) const {
+  virtual int nDimPhasespace(int nFinal) const {
+    if ( nFinal == 1 )
+      return 1;
     return 4*nFinal + 2;
   }
 
   /**
-   * Return true, if this phasespace generator will generate incoming
+   * Return true, if this phase space generator will generate incoming
    * partons itself.
    */
   virtual bool haveX1X2() const { return true; }

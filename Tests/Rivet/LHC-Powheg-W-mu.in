@@ -1,36 +1,52 @@
 ##################################################
-# Rivet analyses at the Z pole
+# Technical parameters for this run
 ##################################################
-read LHCBase-Powheg.in
+cd /Herwig/Generators
+set LHCGenerator:NumberOfEvents 10000000
+set LHCGenerator:RandomNumberGenerator:Seed 31122001
+set LHCGenerator:PrintEvent 10
+set LHCGenerator:MaxErrors 1000000
+##################################################
+#  Need to use an NLO PDF
+##################################################
+set /Herwig/Particles/p+:PDF    /Herwig/Partons/HardNLOPDF
+set /Herwig/Particles/pbar-:PDF /Herwig/Partons/HardNLOPDF
+set /Herwig/Shower/ShowerHandler:PDFA /Herwig/Partons/ShowerLOPDF
+set /Herwig/Shower/ShowerHandler:PDFB /Herwig/Partons/ShowerLOPDF
+set /Herwig/Partons/MPIExtractor:FirstPDF  /Herwig/Partons/MPIPDF
+set /Herwig/Partons/MPIExtractor:SecondPDF /Herwig/Partons/MPIPDF
+set /Herwig/Partons/QCDExtractor:FirstPDF  /Herwig/Partons/HardNLOPDF
+set /Herwig/Partons/QCDExtractor:SecondPDF /Herwig/Partons/HardNLOPDF
 
 ##################################################
-#  Use the q qbar matrix element
+#  Setup the POWHEG shower
 ##################################################
+cd /Herwig/Shower
+set Evolver:IntrinsicPtGaussian 1.9*GeV
+set Evolver:HardEmissionMode POWHEG
+read Matchbox/Powheg-Default-ShowerAlphaSTune.in
+
+##################################################
+#  Create the Herwig analysis
+##################################################
+cd /Herwig/Generators
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert LHCGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+mv /Herwig/Generators/LHCGenerator /Herwig/Generators/EventGenerator
+
 cd /Herwig/MatrixElements
-# Drell-Yan Z/gamma
+set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 7000.0
 insert SimpleQCD:MatrixElements[0] PowhegMEqq2W2ff
 set PowhegMEqq2W2ff:Process Muon
 
-# No QED radiation
-erase /Herwig/EventHandlers/LHCHandler:PostSubProcessHandlers 0
+
+cd /Herwig/Generators
+
+read LHC/LHC-W-mu.in
 
 ##################################################
-# select the analyses
-##################################################
-
-# ATLAS W asymetry
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ATLAS_2011_S9002537
-# ATLAS W+jets
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ATLAS_2010_S8919674
-# ATLAS W pT
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ATLAS_2011_I925932
-# ATLAS W+jets
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ATLAS_2012_I1083318
-# ATLAS W kT scales
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ATLAS_2013_I1217867
-
-##################################################
-# Save run for later usage with 'Herwig++ run'
+# Save run for later usage with 'Herwig run'
 ##################################################
 cd /Herwig/Generators
-saverun LHC-Powheg-W-mu LHCGenerator
+saverun LHC-Powheg-W-mu EventGenerator

@@ -1,3 +1,5 @@
+# -*- ThePEG-repository -*-
+
 ##################################################
 # Common setup for Sextet models
 #
@@ -83,8 +85,8 @@ mkdir /Herwig/NewPhysics/Sextet
 cd /Herwig/NewPhysics/Sextet
 create Herwig::SextetModel Model
 # SM couplings
-set Model:QCD/RunningAlphaS /Herwig/AlphaS
-set Model:EW/RunningAlphaEM /Herwig/AlphaEM
+set Model:QCD/RunningAlphaS /Herwig/Couplings/NLOAlphaS
+set Model:EW/RunningAlphaEM /Herwig/Couplings/AlphaEM
 set Model:EW/CKM /Herwig/CKM
 set Model:RunningMass /Herwig/RunningMass
 ###################################################
@@ -197,5 +199,4 @@ set Sextet/Model:ModelGenerator NewModel
 #
 ###################################################
 cd /Herwig/Generators
-set LEPGenerator:StandardModelParameters  /Herwig/NewPhysics/Sextet/Model
-set LHCGenerator:StandardModelParameters  /Herwig/NewPhysics/Sextet/Model
+set EventGenerator:StandardModelParameters  /Herwig/NewPhysics/Sextet/Model

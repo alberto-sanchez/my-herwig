@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxScaleChoice.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxScaleChoice.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MatchboxScaleChoice_H
@@ -84,8 +84,16 @@ public:
   virtual Energy2 renormalizationScaleQED() const { 
     if ( theFixedQEDScale != ZERO )
       return sqr(theFixedQEDScale);
-    Energy mZ = getParticleData(ParticleID::Z0)->mass();
+    Energy mZ = getParticleData(ParticleID::Z0)->hardProcessMass();
     return mZ*mZ; 
+  }
+
+  /**
+   * Return the shower hard scale. This default implementation returns the
+   * factorization scale.
+   */
+  virtual Energy2 showerScale() const {
+    return factorizationScale();
   }
 
 public:

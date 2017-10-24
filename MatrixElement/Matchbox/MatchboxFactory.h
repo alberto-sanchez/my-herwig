@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxFactory.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxFactory.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MatchboxFactory_H
@@ -14,14 +14,14 @@
 
 #include "ThePEG/Handlers/SubProcessHandler.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/Tree2toNGenerator.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/ProcessData.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxScaleChoice.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/SubtractedME.h"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/Tree2toNGenerator.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/ProcessData.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxScaleChoice.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/Base/SubtractedME.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
 
 namespace Herwig {
 
@@ -57,11 +57,10 @@ public:
 public:
 
   /**
-   * Return the current factory
+   * Flag to indicate that at least one MatchboxFactory object is in action
    */
-  static MatchboxFactory* currentFactory() { 
-    assert(theCurrentFactory());
-    return theCurrentFactory();
+  static bool isMatchboxRun() {
+    return theIsMatchboxRun();
   }
 
   /** @name Process and diagram information */
@@ -100,6 +99,48 @@ public:
   void nLight(unsigned int n) { theNLight = n; }
 
   /**
+   * Return the vector that contains the PDG ids of 
+   * the light flavours, which are contained in the
+   * jet particle group.
+   */
+  vector<long> nLightJetVec() const { return theNLightJetVec; }
+
+  /**
+   * Set the elements of the vector that contains the PDG
+   * ids of the light flavours, which are contained in the
+   * jet particle group.
+   */
+  void nLightJetVec(long n) { theNLightJetVec.push_back(n); }
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the heavy flavours, which are contained in the
+   * jet particle group.
+   */
+  vector<long> nHeavyJetVec() const { return theNHeavyJetVec; }
+
+  /**
+   * Set the elements of the vector that contains the PDG
+   * ids of the heavy flavours, which are contained in the
+   * jet particle group.
+   */
+  void nHeavyJetVec(long n) { theNHeavyJetVec.push_back(n); }
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the light flavours, which are contained in the
+   * proton particle group.
+   */
+  vector<long> nLightProtonVec() const { return theNLightProtonVec; }
+
+  /**
+   * Set the elements of the vector that contains the PDG
+   * ids of the light flavours, which are contained in the
+   * proton particle group.
+   */
+  void nLightProtonVec(long n) { theNLightProtonVec.push_back(n); }
+
+  /**
    * Return the order in \f$\alpha_S\f$.
    */
   unsigned int orderInAlphaS() const { return theOrderInAlphaS; }
@@ -118,6 +159,21 @@ public:
    * Set the order in \f$\alpha_{EM}\f$.
    */
   void orderInAlphaEW(unsigned int o) { theOrderInAlphaEW = o; }
+ 
+  /**
+   * The multiplicity of legs with virtual contributions.
+   */
+  size_t highestVirt() const {return theHighestVirtualSize;}
+
+  /**
+   * Set the highest 
+   **/
+  void setHighestVirt(size_t n){theHighestVirtualSize=n;}
+ 
+  /**
+   * Access the processes vector.
+   */
+   const vector<vector<string> > getProcesses() const {return processes;}
 
   /**
    * Return true, if all processes up to a maximum order are considered
@@ -160,6 +216,16 @@ public:
   void setMECorrectionsOnly(bool on = true) { theMECorrectionsOnly = on; }
 
   /**
+   * Produce matrix element corrections, with LoopSim NLO
+   */
+  bool loopSimCorrections() const { return theLoopSimCorrections; }
+
+  /**
+   * Switch to produce matrix element corrections, with LoopSim NLO
+   */
+  void setLoopSimCorrections(bool on = true) { theLoopSimCorrections = on; }
+
+  /**
    * Return true, if subtracted real emission contributions should be included.
    */
   bool realContributions() const { return theRealContributions; }
@@ -180,17 +246,22 @@ public:
   void setIndependentVirtuals(bool on = true) { theIndependentVirtuals = on; }
 
   /**
+   * Return true, if PK operator contributions should be treated as independent subprocesses
+   */
+  bool independentPKs() const { return theIndependentPKs; }
+
+  /**
+   * Switch on/off PK operator contributions should be treated as independent subprocesses
+   */
+  void setIndependentPKs(bool on = true) { theIndependentPKs = on; }
+
+  /**
    * Return true, if SubProcessGroups should be
    * setup from this MEGroup. If not, a single SubProcess
    * is constructed from the data provided by the
    * head matrix element.
    */
-  bool subProcessGroups() const { return theSubProcessGroups; }
-
-  /**
-   * Switch on or off producing subprocess groups.
-   */
-  void setSubProcessGroups(bool on = true) { theSubProcessGroups = on; }
+  virtual bool subProcessGroups() const { return !showerApproximation(); }
 
   /**
    * Return true, if subtraction scales should be caluclated from real emission kinematics
@@ -201,17 +272,6 @@ public:
    * Switch on/off that subtraction scales should be caluclated from real emission kinematics
    */
   void setRealEmissionScales(bool on = true) { theRealEmissionScales = on; }
-
-  /**
-   * Return true, if the integral over the unresolved emission should be
-   * calculated.
-   */
-  bool inclusive() const { return theInclusive; }
-
-  /**
-   * Switch on or off inclusive mode.
-   */
-  void setInclusive(bool on = true) { theInclusive = on; }
 
   /**
    * Set the shower approximation.
@@ -335,6 +395,16 @@ public:
   vector<Ptr<MatchboxMEBase>::ptr>& bornMEs() { return theBornMEs; }
 
   /**
+   * Return the loop induced matrix elements to be considered
+   */
+  const vector<Ptr<MatchboxMEBase>::ptr>& loopInducedMEs() const { return theLoopInducedMEs; }
+
+  /**
+   * Access the loop induced matrix elements to be considered
+   */
+  vector<Ptr<MatchboxMEBase>::ptr>& loopInducedMEs() { return theLoopInducedMEs; }
+
+  /**
    * Return the processes to be ordered from an OLP
    */
   const map<Ptr<MatchboxAmplitude>::tptr,
@@ -354,6 +424,20 @@ public:
   int orderOLPProcess(const Process& p,
 		      Ptr<MatchboxAmplitude>::tptr amp,
 		      int type);
+
+  /**
+   * Return the amplitudes which need external initialization
+   */
+  const set<Ptr<MatchboxAmplitude>::tptr>& externalAmplitudes() const {
+    return theExternalAmplitudes;
+  }
+
+  /**
+   * Access the amplitudes which need external initialization
+   */
+  set<Ptr<MatchboxAmplitude>::tptr>& externalAmplitudes() {
+    return theExternalAmplitudes;
+  }
 
   /**
    * Return the virtual corrections to be considered
@@ -496,12 +580,23 @@ public:
   /**
    * Prepare a matrix element.
    */
-  void prepareME(Ptr<MatchboxMEBase>::ptr) const;
+  void prepareME(Ptr<MatchboxMEBase>::ptr);
+
+  /**
+   * Check consistency and switch to porduction mode.
+   */
+  virtual void productionMode();
 
   /**
    * Setup everything
    */
   virtual void setup();
+  
+   /**
+   * The highest multiplicity of legs having virtual contributions.(needed for madgraph) 
+   */
+
+  size_t highestVirt(){return theHighestVirtualsize;}
 
   //@}
 
@@ -517,7 +612,7 @@ public:
    * Switch on diagnostic information.
    */
   void setVerbose(bool on = true) { theVerbose = on; }
-
+  
   /**
    * Return true, if verbose while initializing
    */
@@ -543,6 +638,26 @@ public:
    */
   void subtractionData(const string& s) { theSubtractionData = s; }
 
+  /**
+   * Return the subtraction plot type.
+   */
+  const int& subtractionPlotType() const { return theSubtractionPlotType; }
+
+  /**
+   * Set the subtraction plot type.
+   */
+  void subtractionPlotType(const int& t) { theSubtractionPlotType = t; }
+  
+  /**
+   * Return whether subtraction data should be plotted for all phase space points individually
+   */
+  const bool& subtractionScatterPlot() const { return theSubtractionScatterPlot; }
+  
+  /**
+   * Set whether subtraction data should be plotted for all phase space points individually
+   */
+  void subtractionScatterPlot(const bool& s) { theSubtractionScatterPlot = s; }
+  
   /**
    * Return the pole data prefix.
    */
@@ -573,7 +688,93 @@ public:
    */
   map<string,PDVector>& particleGroups() { return theParticleGroups; }
 
+  /**
+   * Return true, if the given particle is incoming
+   */
+  bool isIncoming(cPDPtr p) const {
+    return theIncoming.find(p->id()) != theIncoming.end();
+  }
+
+  /**
+   * Return true, if spin correlation information should be provided, if possible.
+   */
+  bool spinCorrelations() const { return theSpinCorrelations; }
+
+  /**
+   * Indicate that spin correlation information should be provided, if possible.
+   */
+  void setSpinCorrelations(bool yes) { theSpinCorrelations = yes; }
+
   //@}
+
+  /** @name Truncated qtilde shower information */
+  //@{
+
+  /**
+   * Return the subprocess of the real emission
+   */
+  tSubProPtr hardTreeSubprocess() { return theHardtreeSubprocess; }
+
+  /**
+   * Set the subprocess of the real emission for use in calculating the shower hardtree
+   */
+  void setHardTreeSubprocess(tSubProPtr hardTree) { theHardtreeSubprocess = hardTree; }
+
+  /**
+   * Return the born emitter 
+   */
+  int hardTreeEmitter() { return theHardtreeEmitter; }
+
+  /**
+   * Set the born emitter for use in calculating the shower hardtree
+   */
+  void setHardTreeEmitter(int emitter) { theHardtreeEmitter = emitter; }
+
+  /**
+   * Return the born spectator 
+   */
+  int hardTreeSpectator() { return theHardtreeSpectator; }
+
+  /**
+   * Set the born spectator for use in calculating the shower hardtree
+   */
+  void setHardTreeSpectator(int spectator) { theHardtreeSpectator = spectator; }
+
+  //@}
+
+  /** @name Data handling */
+  //@{
+  /**
+   * Return (and possibly create) a directory to contain amplitude
+   * information.
+   */
+  const string& buildStorage();
+
+  /**
+   * Return (and possibly create) a directory to contain integration grid
+   * information.
+   */
+  const string& runStorage();
+  
+  /**
+   *  alpha of http://arxiv.org/pdf/hep-ph/0307268v2.pdf to restrict 
+   *  dipole phase space
+   */
+  double alphaParameter() const { return theAlphaParameter; }
+  
+  /**
+   *  set the alpha parameter (needed for massive PK-Operator)
+   */
+  void setAlphaParameter(double a)const { theAlphaParameter = a; }
+  
+  //@}
+
+public:
+
+  /**
+   * Print a summary of the parameters used
+   */
+  void summary(ostream&) const;
 
 public:
 
@@ -639,6 +840,11 @@ protected:
 private:
 
   /**
+   * Flag to indicate that at least one MatchboxFactory object is in action
+   */
+  static bool& theIsMatchboxRun();
+
+  /**
    * The diagram generator.
    */
   Ptr<Tree2toNGenerator>::ptr theDiagramGenerator;
@@ -655,6 +861,24 @@ private:
   unsigned int theNLight;
 
   /**
+   * Vector with the PDG ids of the light quark flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<long> theNLightJetVec;
+
+  /**
+   * Vector with the PDG ids of the heavy quark flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<long> theNHeavyJetVec;
+
+  /**
+   * Vector with the PDG ids of the light quark flavours,
+   * which are contained in the proton particle group.
+   */
+  vector<long> theNLightProtonVec;
+
+  /**
    * The order in \f$\alpha_S\f$.
    */
   unsigned int theOrderInAlphaS;
@@ -663,6 +887,11 @@ private:
    * The order in \f$\alpha_{EM}\f$.
    */
   unsigned int theOrderInAlphaEW;
+
+  /**
+   * The maximum number of legs with virtual corrections.
+   **/
+  unsigned int theHighestVirtualSize;
 
   /**
    * Switch on or off Born contributions
@@ -685,18 +914,9 @@ private:
   bool theIndependentVirtuals;
 
   /**
-   * True, if SubProcessGroups should be
-   * setup from this MEGroup. If not, a single SubProcess
-   * is constructed from the data provided by the
-   * head matrix element.
+   * True if PK operator contributions should be treated as independent subprocesses
    */
-  bool theSubProcessGroups;
-
-  /**
-   * True, if the integral over the unresolved emission should be
-   * calculated.
-   */
-  bool theInclusive;
+  bool theIndependentPKs;
 
   /**
    * The phase space generator to be used.
@@ -745,6 +965,11 @@ private:
   vector<Ptr<MatchboxMEBase>::ptr> theBornMEs;
 
   /**
+   * The loop induced matrix elements to be considered
+   */
+  vector<Ptr<MatchboxMEBase>::ptr> theLoopInducedMEs;
+
+  /**
    * The virtual corrections to be considered
    */
   vector<Ptr<MatchboxInsertionOperator>::ptr> theVirtuals;
@@ -778,7 +1003,7 @@ private:
    * Switch on or off verbosity
    */
   bool theVerbose;
-
+  
   /**
    * True, if verbose while initializing
    */
@@ -789,6 +1014,16 @@ private:
    */
   string theSubtractionData;
 
+  /**
+   * Set the type of plot that is to be generated for subtraction checking
+   */
+  int theSubtractionPlotType;
+  
+  /**
+   * Set whether subtraction data should be plotted for all phase space points individually
+   */
+  bool theSubtractionScatterPlot;
+  
   /**
    * Prefix for pole data.
    */
@@ -803,7 +1038,7 @@ private:
    * The real emission process to be included; if empty, all possible
    * ones will be considered.
    */
-  vector<string> realEmissionProcess;
+  vector<vector<string> > realEmissionProcesses;
 
   /**
    * Particle groups.
@@ -830,34 +1065,52 @@ private:
    */
   string endParticleGroup(string);
 
+protected:
+  
+  /**
+   * Parse a process description
+   */
+  virtual vector<string> parseProcess(string);
+
+private:
+  
   /**
    * Command to set the process.
    */
   string doProcess(string);
 
   /**
+   * Command to set the process.
+   */
+  string doLoopInducedProcess(string);
+
+  /**
    * The process to consider in terms of particle groups.
    */
-  vector<string> process;
+  vector<vector<string> > processes;
+
+  /**
+   * The loop induced process to consider in terms of particle groups.
+   */
+  vector<vector<string> > loopInducedProcesses;
 
   /**
    * Generate subprocesses.
    */
-  set<PDVector> makeSubProcesses(const vector<string>&, bool sorted = true) const;
+  set<PDVector> makeSubProcesses(const vector<string>&) const;
 
-  /**
-   * Generate subprocesses with all permutations of outgoing partons.
-   */
-  set<PDVector> makeUnsortedSubProcesses(const vector<string>& data) const {
-    return makeSubProcesses(data, false);
-  }
-
+ 
+public: 
+  
   /**
    * Generate matrix element objects for the given process.
    */
   vector<Ptr<MatchboxMEBase>::ptr> makeMEs(const vector<string>&, 
-					   unsigned int orderas);
+					   unsigned int orderas,
+					   bool virt);
 
+  
+private:
   /**
    * The shower approximation.
    */
@@ -885,6 +1138,11 @@ private:
   map<Ptr<MatchboxAmplitude>::tptr,map<pair<Process,int>,int> > theOLPProcesses;
 
   /**
+   * Amplitudes which need external initialization
+   */
+  set<Ptr<MatchboxAmplitude>::tptr> theExternalAmplitudes;
+
+  /**
    * Amplitudes to be selected on clashing responsibilities.
    */
   vector<Ptr<MatchboxAmplitude>::ptr> theSelectedAmplitudes;
@@ -910,9 +1168,110 @@ private:
   bool theMECorrectionsOnly;
 
   /**
-   * The current factory
+   * The highest multiplicity of legs having virtual contributions.(needed for madgraph) 
    */
-  static MatchboxFactory*& theCurrentFactory();
+  int theHighestVirtualsize;
+
+  /**
+   * Produce matrix element corrections, with LoopSim NLO
+   */
+  bool theLoopSimCorrections;
+
+  /**
+   * True, if the setup has already been run.
+   */
+  bool ranSetup;
+
+  /**
+   * PDG ids of incoming particles
+   */
+  set<long> theIncoming;
+
+  /**
+   * True, if first incoming partons originate from perturbative PDF
+   */
+  bool theFirstPerturbativePDF;
+
+  /**
+   * True, if second incoming partons originate from perturbative PDF
+   */
+  bool theSecondPerturbativePDF;
+
+  /**
+   * True, if this Factory is in production mode.
+   */
+  bool inProductionMode;
+
+  /**
+   * The real emission subprocess used when calculating the hardtree
+   * in the truncated qtilde shower
+   */
+  tSubProPtr theHardtreeSubprocess;
+
+  /**
+   * The born emitter used when calculating the hardtree in
+   * the truncated shower
+   */
+  int theHardtreeEmitter;
+
+  /**
+   * The born spectator used when calculating the hardtree in
+   * the truncated shower
+   */
+  int theHardtreeSpectator;
+
+  /**
+   * True, if spin correlation information should be provided, if possible.
+   */
+  bool theSpinCorrelations;
+
+  /**
+   * The alpha parameter to be used for the dipole subtraction
+   * JB: The parameter is muatble, since we need to be able to change it 
+   * while calculating the difference of IPK with and without alpha.
+   */  
+  mutable double theAlphaParameter;
+
+  /**
+   * Wether or not charge conservation should be enforced for the processes
+   * constructed.
+   */
+  bool theEnforceChargeConservation;
+
+  /**
+   * Wether or not colour conservation should be enforced for the processes
+   * constructed.
+   */
+  bool theEnforceColourConservation;
+
+  /**
+   * Wether or not lepton number conservation should be enforced for the processes
+   * constructed.
+   */
+  bool theEnforceLeptonNumberConservation;
+
+  /**
+   * Wether or not quark number conservation should be enforced for the processes
+   * constructed.
+   */
+  bool theEnforceQuarkNumberConservation;
+
+  /**
+   * Assume flavour diagonal lepton interactions
+   */
+  bool theLeptonFlavourDiagonal;
+
+  /**
+   * Assume flavour diagonal quark interactions
+   */
+  bool theQuarkFlavourDiagonal;
+
+  /**
+   * Command for production mode
+   */
+  string doProductionMode(string) {
+    productionMode(); return "";
+  }
 
 private:
 

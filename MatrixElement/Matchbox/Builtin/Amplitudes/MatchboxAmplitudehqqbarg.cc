@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudehqqbarg.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudehqqbarg.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -43,13 +43,13 @@ IBPtr MatchboxAmplitudehqqbarg::fullclone() const {
 
 void MatchboxAmplitudehqqbarg::doinit() {
   MatchboxAmplitude::doinit();
-  MW = getParticleData(ParticleID::Wplus)->mass();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
   nPoints(4);;
 }
 
 void MatchboxAmplitudehqqbarg::doinitrun() {
   MatchboxAmplitude::doinitrun();
-  MW = getParticleData(ParticleID::Wplus)->mass();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
   nPoints(4);
 }
 
@@ -112,7 +112,7 @@ Complex MatchboxAmplitudehqqbarg::evaluate(size_t, const vector<int>& hel, Compl
   for (;q<amplitudePartonData().size();++q){if (x[q]->id()!= 25 && x[q]->id()>0 ) break;} 
   for (;qbar<amplitudePartonData().size();++qbar){if (x[qbar]->id() ==-x[q]->id()) break;}
   for (;g<amplitudePartonData().size();++g){if (x[g]->id() == 21) break;}
-  double gw = sqrt(4*Constants::pi*SM().alphaEM()) / sqrt(SM().sin2ThetaW());
+  double gw = sqrt(4*Constants::pi*SM().alphaEMMZ()) / sqrt(SM().sin2ThetaW());
   double gs = sqrt(4*Constants::pi*SM().alphaS());
   double alphaS = SM().alphaS();
   double v= 2*MW/gw/sqrt(lastSHat()) ;
@@ -167,16 +167,19 @@ void MatchboxAmplitudehqqbarg::persistentInput(PersistentIStream &is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxAmplitudehqqbarg,MatchboxAmplitude>
-  describeHerwigMatchboxAmplitudehqqbarg("Herwig::MatchboxAmplitudehqqbarg", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudehqqbarg("Herwig::MatchboxAmplitudehqqbarg", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudehqqbarg::Init() {
 
   static ClassDocumentation<MatchboxAmplitudehqqbarg> documentation
     ("MatchboxAmplitudehqqbarg");
+
+  /*  // not used guess leftover from validation (mu2() variation)
   static Parameter<MatchboxAmplitudehqqbarg,Energy> interfaceTHooft
     ("interfaceTHooft",
      "The THooft Mass.",
      &MatchboxAmplitudehqqbarg::interfaceTHooft, GeV, 115.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
+  */
 }
 

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Hw64Decayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// Hw64Decayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -16,12 +16,12 @@
 #include <ThePEG/PDT/EnumParticles.h>
 #include <ThePEG/PDT/DecayMode.h>
 #include <ThePEG/Interface/ClassDocumentation.h>
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
 #include <ThePEG/Interface/Parameter.h>
 #include <ThePEG/Interface/Switch.h>
 #include <ThePEG/Persistency/PersistentOStream.h>
 #include <ThePEG/Persistency/PersistentIStream.h>
-#include "Herwig++/PDT/GenericMassGenerator.h"
+#include "Herwig/PDT/GenericMassGenerator.h"
 
 using namespace Herwig;
 
@@ -164,11 +164,11 @@ ParticleVector Hw64Decayer::decay(const Particle & p,
       int IPDG = abs(p.id());
       Energy m1, m2, m3;
       if(IPDG >= 1000)
-	m1 = generator()->getParticleData((IPDG/1000)%10)->mass();
+	m1 = generator()->getParticleData((IPDG/1000)%10)->constituentMass();
       else
 	m1 = ZERO;
-      m2 = generator()->getParticleData((IPDG/100)%10)->mass();
-      m3 = generator()->getParticleData((IPDG/10)%10)->mass();
+      m2 = generator()->getParticleData((IPDG/100)%10)->constituentMass();
+      m3 = generator()->getParticleData((IPDG/10)%10)->constituentMass();
       xs = 1.0 - Math::absmax<Energy>(m1, Math::absmax<Energy>(m2, m3))/(m1+m2+m3);
       // Do decay, repeat until meets condition
       do {

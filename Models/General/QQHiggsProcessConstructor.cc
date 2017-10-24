@@ -10,7 +10,7 @@
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/MatrixElement/General/GeneralQQHiggs.h"
+#include "Herwig/MatrixElement/General/GeneralQQHiggs.h"
 
 using namespace Herwig;
 
@@ -64,7 +64,7 @@ void QQHiggsProcessConstructor::Init() {
      "MassGenerator",
      "Use the mass generator to give the shape",
      2);
-  static SwitchOption interfaceStandardShapeOn
+  static SwitchOption interfaceStandardShapeYes
     (interfaceShapeOption,
      "OnShell",
      "Produce the Higgs on-shell",

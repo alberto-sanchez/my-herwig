@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// PrototypeVertex.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2007 The Herwig Collaboration
+// PrototypeVertex.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_PrototypeVertex_H
@@ -13,6 +13,7 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/Utilities/EnumIO.h"
+#include "NBodyDecayConstructorBase.fh"
 //
 // This is the declaration of the PrototypeVertex class.
 //
@@ -29,7 +30,7 @@ typedef pair<unsigned int, double> CFPair;
 
 
 /**
- *  A struct to order the particles in the same way as in the DecayMode's
+ *  A struct to order the particles in the same way as in the DecayModes
  */
 struct ParticleOrdering {
   /**
@@ -37,7 +38,7 @@ struct ParticleOrdering {
    * @param p1 The first ParticleData object
    * @param p2 The second ParticleData object
    */
-  bool operator() (PDPtr p1, PDPtr p2) {
+  bool operator() (tcPDPtr p1, tcPDPtr p2) {
     return abs(p1->id()) > abs(p2->id()) ||
       ( abs(p1->id()) == abs(p2->id()) && p1->id() > p2->id() ) ||
       ( p1->id() == p2->id() && p1->fullName() > p2->fullName() );
@@ -209,14 +210,16 @@ public:
    *  Create a \f$1\to2\f$ prototype
    */
   static  void createPrototypes(tPDPtr inpart, VertexBasePtr vertex,
-				std::stack<PrototypeVertexPtr> & prototypes);
+				std::stack<PrototypeVertexPtr> & prototypes,
+				NBodyDecayConstructorBasePtr decayCon);
 
   /**
    *  Expand the prototypes by adding more legs
    */
   static void expandPrototypes(PrototypeVertexPtr proto, VertexBasePtr vertex,
 			       std::stack<PrototypeVertexPtr> & prototypes,
-			       const set<PDPtr> & excluded);
+			       const set<PDPtr> & excluded,
+			       NBodyDecayConstructorBasePtr decayCon);
 
   /**
    *  Copy the whole structure with a new branching

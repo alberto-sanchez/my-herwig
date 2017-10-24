@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxRambo.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxRambo.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -18,7 +18,7 @@
 #include "ThePEG/Repository/UseRandom.h"
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
-#include "Herwig++/Utilities/GSLBisection.h"
+#include "Herwig/Utilities/GSLBisection.h"
 #include "ThePEG/Cuts/Cuts.h"
 
 #include "ThePEG/Persistency/PersistentOStream.h"
@@ -57,7 +57,7 @@ void MatchboxRambo::setXComb(tStdXCombPtr xc) {
   if ( xc ) {
     for ( cPDVector::const_iterator d = mePartonData().begin();
 	  d != mePartonData().end(); ++d ) {
-      if ( (**d).mass() != ZERO ) {
+      if ( (**d).hardProcessMass() != ZERO ) {
 	needToReshuffle = true;
 	break;
       }
@@ -185,11 +185,11 @@ double MatchboxRambo::generateTwoToNKinematics(const double* r,
 	k != momenta.end(); ++k, ++d ) {
     num += (*k).vect().mag2()/(*k).t();
     Energy q = (*k).t();
-    (*k).setT(sqrt(sqr((**d).mass())+xi*xi*sqr((*k).t())));
+    (*k).setT(sqrt(sqr((**d).hardProcessMass())+xi*xi*sqr((*k).t())));
     (*k).setVect(xi*(*k).vect());
     weight *= q/(*k).t();
     den += (*k).vect().mag2()/(*k).t();
-    (*k).setMass((**d).mass());
+    (*k).setMass((**d).hardProcessMass());
   }
 
   if ( !matchConstraints(momenta) )
@@ -211,7 +211,7 @@ Energy MatchboxRambo::ReshuffleEquation::operator() (double xi) const {
   vector<Lorentz5Momentum>::const_iterator p = momentaBegin;
   Energy res = -w;
   for ( ; d != dataEnd; ++d, ++p ) {
-    res += sqrt(sqr((**d).mass()) +
+    res += sqrt(sqr((**d).hardProcessMass()) +
 		xi*xi*sqr(p->t()));
   }
   return res;
@@ -236,7 +236,7 @@ void MatchboxRambo::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxRambo,MatchboxPhasespace>
-  describeHerwigMatchboxRambo("Herwig::MatchboxRambo", "HwMatchbox.so");
+  describeHerwigMatchboxRambo("Herwig::MatchboxRambo", "Herwig.so");
 
 void MatchboxRambo::Init() {
 
@@ -246,18 +246,19 @@ void MatchboxRambo::Init() {
 
   static Switch<MatchboxRambo,bool> interfaceMakeReferenceSample
     ("MakeReferenceSample",
-     "Switch on generation of a reference sample of phasespace points.",
+     "Switch on generation of a reference sample of phase space points.",
      &MatchboxRambo::theMakeReferenceSample, false, false, false);
-  static SwitchOption interfaceMakeReferenceSampleOn
+  static SwitchOption interfaceMakeReferenceSampleYes
     (interfaceMakeReferenceSample,
-     "On",
+     "Yes",
      "Generate a reference sample.",
      true);
-  static SwitchOption interfaceMakeReferenceSampleOff
+  static SwitchOption interfaceMakeReferenceSampleNo
     (interfaceMakeReferenceSample,
-     "Off",
+     "No",
      "Do not generate a reference sample.",
      false);
+  interfaceMakeReferenceSample.rank(-1);
 
 }
 

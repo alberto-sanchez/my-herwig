@@ -1,34 +1,39 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at the Z pole
+# base parameters for LEP analyses
 ##################################################
-read LEPBase.in
-
-create ThePEG::LuminosityFunction BFactoryLuminosity
-set BFactoryLuminosity:BeamEMaxA 5.29*GeV
-set BFactoryLuminosity:BeamEMaxB 5.29*GeV
-set /Herwig/Cuts/EECuts:MHatMin 10.5799
-set /Herwig/EventHandlers/LEPHandler:LuminosityFunction BFactoryLuminosity
-
+read snippets/EECollider.in
 ##################################################
-# LEP physics parameters (override defaults) 
-##################################################
-cd /Herwig/MatrixElements
-create Herwig::MEee2VectorMeson MEUpsilon HwMELepton.so
-set MEUpsilon:VectorMeson /Herwig/Particles/Upsilon(4S)
-set MEUpsilon:Coupling 0.0004151809
-set SimpleEE:MatrixElements 0 MEUpsilon
-insert /Herwig/NewPhysics/DecayHandler:Excluded 0 /Herwig/Particles/Upsilon(4S)
-cd /Herwig/Generators
-##################################################
-# select the analyses 
-##################################################
-
-# BELLE charm hadron production
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ARGUS_1993_S2653028
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ARGUS_1993_S2789213
-
-##################################################
-# Save run for later usage with 'Herwig++ run'
+# Technical parameters for this run
 ##################################################
 cd /Herwig/Generators
-saverun BFactory-Upsilon4 LEPGenerator
+set EventGenerator:MaxErrors 1000000
+
+##################################################
+#  Switch off ISR
+##################################################
+set /Herwig/Particles/e-:PDF /Herwig/Partons/NoPDF
+set /Herwig/Particles/e+:PDF /Herwig/Partons/NoPDF
+
+##################################################
+#  Create the Herwig analysis
+##################################################
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+##################################################
+#  Use the q qbar matrix element
+##################################################
+# default e+e- > q qbar (5 flavours d,u,s,c,b)
+insert  /Herwig/MatrixElements/SubProcess:MatrixElements 0 /Herwig/MatrixElements/MEee2gZ2qq
+set /Herwig/MatrixElements/MEee2gZ2qq:MaximumFlavour 4
+
+set /Herwig/Shower/PartnerFinder:QEDPartner IIandFF
+
+read BFactory/BFactory-Upsilon4.in
+
+##################################################
+# Save run for later usage with 'Herwig run'
+##################################################
+cd /Herwig/Generators
+saverun BFactory-Upsilon4 EventGenerator

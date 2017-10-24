@@ -1,3 +1,5 @@
+# -*- ThePEG-repository -*-
+
 ##################################################
 # Example generator for the Randell-Sundrum model
 # in lepton collisions
@@ -10,6 +12,12 @@
 # The second section contains the user settings.
 ###################################################
 
+read snippets/EECollider.in
+
+# Set emission to POWHEG for radiation in decays
+set /Herwig/Shower/ShowerHandler:HardEmission POWHEG
+
+# read model
 read RS.model
 cd /Herwig/NewPhysics
 
@@ -36,14 +44,27 @@ insert ResConstructor:Outgoing 0 /Herwig/Particles/t
 
 # Other parameters for run
 cd /Herwig/Generators
-set LEPGenerator:NumberOfEvents 100000000
-set LEPGenerator:RandomNumberGenerator:Seed 31122001
-set LEPGenerator:PrintEvent 10
-set LEPGenerator:MaxErrors 10000
-set LEPGenerator:EventHandler:LuminosityFunction:Energy 800.0
-set LEPGenerator:EventHandler:CascadeHandler:MPIHandler NULL
+set EventGenerator:EventHandler:LuminosityFunction:Energy 800.0
 
 ##################################################
-# Save run for later usage with 'Herwig++ run'
+## prepare for Rivet analysis or HepMC output
+## when running with parton shower
 ##################################################
-saverun ILC-RS LEPGenerator
+#read snippets/Rivet.in
+#insert /Herwig/Analysis/Rivet:Analyses 0 XXX_2015_ABC123
+#read snippets/HepMC.in
+#set /Herwig/Analysis/HepMC:PrintEvent NNN
+
+##################################################
+## prepare for Rivet analysis or HepMC output
+## when running at fixed order (NO shower)
+##################################################
+#read snippets/RivetFixedOrder.in
+#insert /Herwig/Analysis/RivetFixedOrder:Analyses 0 XXX_2015_ABC123
+#read snippets/HepMCFixedOrder.in
+#set /Herwig/Analysis/HepMCFixedOrder:PrintEvent NNN
+
+##################################################
+# Save run for later usage with 'Herwig run'
+##################################################
+saverun ILC-RS EventGenerator

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DecayIntegrator.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// DecayIntegrator.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_DecayIntegrator_H
@@ -14,9 +14,9 @@
 #include <ThePEG/PDT/Decayer.h>
 #include "DecayPhaseSpaceChannel.h"
 #include <ThePEG/PDT/EnumParticles.h>
-#include <Herwig++/Decay/DecayVertex.h>
+#include <Herwig/Decay/DecayVertex.h>
 #include "DecayPhaseSpaceMode.fh"
-#include "Herwig++/PDT/WidthCalculatorBase.fh"
+#include "Herwig/PDT/WidthCalculatorBase.fh"
 #include "Radiation/DecayRadiationGenerator.h"
 #include "HwDecayerBase.h"
 #include "DecayIntegrator.fh"
@@ -29,7 +29,7 @@ using namespace ThePEG;
    * \brief Main class for Decayers implementing multi-channel phase space integration.
    * \author Peter Richardson
    *
-   *  This class is designed to be the base class for Herwig++ decays including
+   *  This class is designed to be the base class for Herwig decays including
    *  the implementation of a multichannel decayer or n-body phase space decays.
    *
    *  The <code>DecayIntegrator</code> class inherits from ThePEG's Decayer class
@@ -67,6 +67,11 @@ public:
    *  The output operator is a friend, this is mainly for debugging
    */    
   friend ostream & operator<<(ostream &, const DecayIntegrator &);
+
+  /**
+   *  and DecayPhaseMode
+   */
+  friend class DecayPhaseSpaceMode;
 
   /**
    *  Enum for the matrix element option
@@ -141,7 +146,7 @@ public:
   /**
    * The helicity amplitude matrix element for spin correlations.
    */
-  DecayMatrixElement & ME() const {return _matrixelement;}
+  DecayMEPtr ME() const {return _matrixelement;}
 
   /**
    * Specify the \f$1\to2\f$ matrix element to be used in the running width calculation.
@@ -327,7 +332,7 @@ protected:
   /**
    * Set the helicity matrix element for the decay.
    */
-  void ME(const DecayMatrixElement & in) const {_matrixelement.reset(in);}
+  void ME(DecayMEPtr in) const { _matrixelement = in;}
    
   /**
    * Reset the properities of all intermediates.
@@ -441,7 +446,7 @@ private:
   /**
    * The helicity matrix element for the current decay
    */
-  mutable DecayMatrixElement _matrixelement;
+  mutable DecayMEPtr _matrixelement;
 
   /**
    *  Whether or not the real photon emission matrix element exists

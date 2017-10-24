@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ScalarVectorVectorDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// ScalarVectorVectorDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -17,10 +17,11 @@
 #include "ThePEG/Interface/ParVector.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
 #include "ThePEG/PDT/DecayMode.h"
 #include "ThePEG/Helicity/WaveFunction/ScalarWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/VectorWaveFunction.h"
+#include "Herwig/Decay/TwoBodyDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -175,13 +176,14 @@ double ScalarVectorVectorDecayer::me2(const int,
 				      const Particle & inpart,
 				      const ParticleVector & decay,
 				      MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(TwoBodyDecayMatrixElement(PDT::Spin0,PDT::Spin1,PDT::Spin1)));
   bool photon[2]={false,false};
   for(unsigned int ix=0;ix<2;++ix)
     photon[ix] = decay[ix]->id()==ParticleID::gamma;
   if(meopt==Initialize) {
     ScalarWaveFunction::
       calculateWaveFunctions(_rho,const_ptr_cast<tPPtr>(&inpart),incoming);
-    ME(DecayMatrixElement(PDT::Spin0,PDT::Spin1,PDT::Spin1));
   }
   if(meopt==Terminate) {
     // set up the spin information for the decay products
@@ -201,7 +203,7 @@ double ScalarVectorVectorDecayer::me2(const int,
   unsigned int ix,iy;
   for(ix=0;ix<3;++ix) {
     for(iy=0;iy<3;++iy) {
-      ME()(0,ix,iy)=fact*(p1p2*_vectors[0][ix].dot(_vectors[1][iy])-
+      (*ME())(0,ix,iy)=fact*(p1p2*_vectors[0][ix].dot(_vectors[1][iy])-
 			  (_vectors[1][iy]*decay[0]->momentum())*
 			  (_vectors[0][ix]*decay[1]->momentum()));
     }
@@ -215,7 +217,7 @@ double ScalarVectorVectorDecayer::me2(const int,
   //   cerr << "testing matrix element for " << inpart.PDGName() << " -> " 
   //        << decay[0]->PDGName() << " " << decay[1]->PDGName() << " "
   //        << me << " " << test << " " << (me-test)/(me+test) << "\n";
-  return ME().contract(_rho).real();
+  return ME()->contract(_rho).real();
 }
 
 // output the setup info for the particle database

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IFMggxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IFMggxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,10 +20,10 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFMassiveTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFMassiveInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -46,7 +46,7 @@ bool IFMggxDipole::canHandle(const cPDVector& partons,
     emitter < 2 && spectator > 1 &&
     partons[emission]->id() == ParticleID::g &&
     partons[emitter]->id() == ParticleID::g &&
-    partons[spectator]->mass() != ZERO;
+    partons[spectator]->hardProcessMass() != ZERO;
 }
 
 double IFMggxDipole::me2Avg(double ccme2) const {
@@ -61,7 +61,7 @@ double IFMggxDipole::me2Avg(double ccme2) const {
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
 
-  double muj2 = sqr( (realEmissionME()->lastXComb().mePartonData()[realSpectator()]->mass()) ) /
+  double muj2 = sqr( (realEmissionME()->lastXComb().mePartonData()[realSpectator()]->hardProcessMass()) ) /
     (2.* (realEmissionME()->lastXComb().meMomenta()[bornSpectator()])*
      (realEmissionME()->lastXComb().meMomenta()[realEmitter()]) );
 
@@ -138,8 +138,8 @@ void IFMggxDipole::Init() {
   static ClassDocumentation<IFMggxDipole> documentation
     ("IFMggxDipole");
 
-  DipoleRepository::registerDipole<0,IFMggxDipole,IFLightTildeKinematics,IFLightInvertedTildeKinematics>
-    ("IFMggxDipole","IFLightTildeKinematics","IFLightInvertedTildeKinematics");
+  DipoleRepository::registerDipole<0,IFMggxDipole,IFMassiveTildeKinematics,IFMassiveInvertedTildeKinematics>
+    ("IFMggxDipole","IFMassiveTildeKinematics","IFMassiveInvertedTildeKinematics");
 
 }
 
@@ -149,4 +149,4 @@ void IFMggxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IFMggxDipole,SubtractionDipole>
-describeHerwigIFMggxDipole("Herwig::IFMggxDipole", "HwMatchbox.so");
+describeHerwigIFMggxDipole("Herwig::IFMggxDipole", "Herwig.so");

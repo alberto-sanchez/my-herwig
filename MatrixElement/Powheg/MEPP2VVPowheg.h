@@ -5,11 +5,11 @@
 // This is the declaration of the MEPP2VVPowheg class.
 //
 
-#include "Herwig++/MatrixElement/Hadron/MEPP2VV.h"
-#include "Herwig++/MatrixElement/Powheg/VVKinematics.h"
-#include "Herwig++/Utilities/Maths.h"
-#include "Herwig++/Models/StandardModel/StandardCKM.h"
-#include "Herwig++/Shower/Couplings/ShowerAlpha.h"
+#include "Herwig/MatrixElement/Hadron/MEPP2VV.h"
+#include "Herwig/MatrixElement/Powheg/VVKinematics.h"
+#include "Herwig/Utilities/Maths.h"
+#include "Herwig/Models/StandardModel/StandardCKM.h"
+#include "Herwig/Shower/Core/Couplings/ShowerAlpha.h"
 
 namespace Herwig {
 using namespace ThePEG;
@@ -41,7 +41,8 @@ public:
   /**
    *  Apply the POWHEG style correction
    */
-  virtual HardTreePtr generateHardest(ShowerTreePtr);
+  virtual RealEmissionProcessPtr generateHardest(RealEmissionProcessPtr,
+						 ShowerInteraction inter);
   //@}
 
 public:
@@ -759,14 +760,14 @@ private:
   /**
    *  Pointers to the ShowerProgenitor objects for the partons
    */
-  ShowerProgenitorPtr qProgenitor_;
-  ShowerProgenitorPtr qbProgenitor_;
+  PPtr qProgenitor_;
+  PPtr qbProgenitor_;
 
   /**
    *  Pointers to the Shower particle objects for the partons
    */
-  ShowerParticlePtr showerQuark_;
-  ShowerParticlePtr showerAntiquark_;
+  PPtr showerQuark_;
+  PPtr showerAntiquark_;
 
   /**
    *  Pointers to the BeamParticleData objects
@@ -783,10 +784,9 @@ private:
    *  Pointers to the Shower particle objects for the partons
    */
   PPtr gluon_;
-  ShowerParticlePtr V1_;
-  ShowerParticlePtr V2_;
+  PPtr V1_;
+  PPtr V2_;
   vector<PPtr> children_;
-  vector<PPtr> photons_;
 
   /**
    *  Flag indicating if the q & qbar are flipped or not i.e. this

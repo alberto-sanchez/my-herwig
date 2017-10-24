@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEMatching.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MEMatching.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MEMatching_H
@@ -12,7 +12,7 @@
 // This is the declaration of the MEMatching class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
+#include "Herwig/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
 
 namespace Herwig {
 
@@ -50,6 +50,18 @@ public:
    */
   virtual bool needsSplittingGenerator() const { return true; }
 
+  /**
+   * Return true, if this shower approximation will require
+   * H events
+   */
+  virtual bool hasHEvents() const { return restrictPhasespace() || profileScales(); }
+
+  /**
+   * Return true, if this shower approximation will require 
+   * a truncated parton shower
+   */
+  virtual bool needsTruncatedShower() const { return theTruncatedShower; }
+
 public:
 
   /**
@@ -66,16 +78,6 @@ public:
    * project onto the splitting given by the dipole used.
    */
   virtual double me2() const;
-
-  /**
-   * Generate a weight for the given dipole channel
-   */
-  double channelWeight(int emitter, int emission, int spectator) const;
-
-  /**
-   * Generate a normalized weight taking into account all channels
-   */
-  double channelWeight() const;
 
 public:
 
@@ -134,10 +136,9 @@ private:
   MEMatching & operator=(const MEMatching &);
 
   /**
-   * A scale to project out singular parts; if zero, the full matrix
-   * element correction is exponentiated.
+   * True, if a truncated parton shower should be generated
    */
-  Energy theScreeningScale;
+  bool theTruncatedShower;
 
 };
 

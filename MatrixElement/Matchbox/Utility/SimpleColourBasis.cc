@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SimpleColourBasis.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// SimpleColourBasis.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -50,7 +50,7 @@ size_t SimpleColourBasis::prepareBasis(const vector<PDT::Colour>& basis) {
   if ( basis == id8888 )
     return 6;
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis::prepareBasis(): Cannot handle colour configuration" << Exception::runerror;
 
   return 0;
 
@@ -148,7 +148,7 @@ double SimpleColourBasis::scalarProduct(size_t a, size_t b,
 
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis::scalarProduct(): Cannot handle colour configuration" << Exception::runerror;
 
 }
 
@@ -214,7 +214,7 @@ double SimpleColourBasis::tMatrixElement(size_t i, size_t a,
       return a == 0 ? 1. : -1.;
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis::tMatrixElement(): Cannot handle colour configuration" << Exception::runerror;
 
   return 0.;
 
@@ -383,7 +383,7 @@ void SimpleColourBasis::persistentInput(PersistentIStream &, int) {}
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<SimpleColourBasis,ColourBasis>
-  describeHerwigSimpleColourBasis("Herwig::SimpleColourBasis", "HwMatchbox.so");
+  describeHerwigSimpleColourBasis("Herwig::SimpleColourBasis", "Herwig.so");
 
 void SimpleColourBasis::Init() {
 

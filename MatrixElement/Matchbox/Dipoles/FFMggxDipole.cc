@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FFMggxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FFMggxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,10 +20,10 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FFMassiveTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FFMassiveInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FFMassiveTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FFMassiveInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -46,13 +46,43 @@ bool FFMggxDipole::canHandle(const cPDVector& partons,
     emitter > 1 && spectator > 1 &&
     partons[emission]->id() == ParticleID::g &&
     partons[emitter]->id() == ParticleID::g &&
-    partons[spectator]->mass() != ZERO;
+    partons[spectator]->hardProcessMass() != ZERO;
 }
 
-// TODO: (5.20)
-double FFMggxDipole::me2Avg(double) const {
-  assert(false && "implementation missing");
-  return 0.;
+double FFMggxDipole::me2Avg(double ccme2) const {
+
+  if ( jacobian() == 0.0 )
+    return 0.0;
+
+  double y = subtractionParameters()[0];
+  double z = subtractionParameters()[1];
+
+  // masses, g->gg all masses zero except spectator
+  double muj2 = sqr( realEmissionME()->lastXComb().mePartonData()[realSpectator()]->hardProcessMass() / lastDipoleScale() );
+  // massive extra terms, viji = 1
+  double vijk = sqrt( sqr(2.*muj2+(1.-muj2)*(1.-y))-4.*muj2 ) / ((1.-muj2)*(1.-y));
+
+  Energy2 prop =
+    2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
+  (realEmissionME()->lastXComb().meMomenta()[realEmission()]));
+
+  double zp = 0.5*(1.+vijk);
+  double zm = 0.5*(1.-vijk);
+
+  double res = -ccme2;
+
+  // extra mass terms all = 0.
+  res *= 16.*Constants::pi*SM().Nc()*(realEmissionME()->lastXComb().lastSHat())*
+    (underlyingBornME()->lastXComb().lastAlphaS())/prop;
+
+  res *= (1./(1-z*(1-y))+1./(1-(1.-z)*(1.-y))+(z*(1.-z)-zm*zp-2.)/vijk);
+
+  res *=
+    realEmissionME()->finalStateSymmetry() /
+    underlyingBornME()->finalStateSymmetry();
+
+  return res;
+
 }
 
 double FFMggxDipole::me2() const {
@@ -64,7 +94,7 @@ double FFMggxDipole::me2() const {
   double z = subtractionParameters()[1];
   
   // masses, g->gg all masses zero except spectator
-  double muj2 = sqr( realEmissionME()->lastXComb().mePartonData()[realSpectator()]->mass() / lastDipoleScale() );
+  double muj2 = sqr( realEmissionME()->lastXComb().mePartonData()[realSpectator()]->hardProcessMass() / lastDipoleScale() );
   // massive extra terms
   double vijk = sqrt( sqr(2.*muj2+(1.-muj2)*(1.-y))-4.*muj2 ) / ((1.-muj2)*(1.-y));
   
@@ -117,4 +147,4 @@ void FFMggxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FFMggxDipole,SubtractionDipole>
-describeHerwigFFMggxDipole("Herwig::FFMggxDipole", "HwMatchbox.so");
+describeHerwigFFMggxDipole("Herwig::FFMggxDipole", "Herwig.so");

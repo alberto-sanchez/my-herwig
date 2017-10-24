@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudehbbbar.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudehbbbar.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -41,14 +41,14 @@ IBPtr MatchboxAmplitudehbbbar::fullclone() const {
 
 void MatchboxAmplitudehbbbar::doinit() {
   MatchboxAmplitude::doinit();
-  MW = getParticleData(ParticleID::Wplus)->mass();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   nPoints(3);;
 }
 
 void MatchboxAmplitudehbbbar::doinitrun() {
   MatchboxAmplitude::doinitrun();
-  MW = getParticleData(ParticleID::Wplus)->mass();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   nPoints(3);
 }
@@ -108,7 +108,7 @@ Complex MatchboxAmplitudehbbbar::evaluate(size_t, const vector<int>& hel, Comple
   //cout<<"teilchenidentifizierung";
   for (;q<amplitudePartonData().size();++q){if (x[q]->id()!= 25 && x[q]->id()>0 ) break;} //cout<<"x[q]"<<x[q]->id()<<" hel: "<<hel[q]<<endl;
   for (;qbar<amplitudePartonData().size();++qbar){if (x[qbar]->id() ==-x[q]->id()) break;} //cout<<"x[qbar]"<<x[qbar]->id()<<" hel: "<<hel[qbar]<<endl;
-  double gw = sqrt(4*Constants::pi*SM().alphaEM()) / sqrt(SM().sin2ThetaW());
+  double gw = sqrt(4*Constants::pi*SM().alphaEMMZ()) / sqrt(SM().sin2ThetaW());
   
   long id=x[q]->id();
   Energy Mf = 0*GeV;
@@ -119,7 +119,9 @@ Complex MatchboxAmplitudehbbbar::evaluate(size_t, const vector<int>& hel, Comple
     case 4 : Mf = interfaceCMass; /*cout<<"c"<<ounit(Mf,GeV)<<endl;*/ break;
     case 5 : Mf = interfaceBMass; /*cout<<"b"<<ounit(Mf,GeV)<<endl;*/ break;
   }
-  if (Mf==0*GeV) cout<<"Check infile. The incoming particles need to be massive!"; 
+  if (Mf==0*GeV) 
+    throw Exception() << "Invalid settings in MatchboxAmplitudehbbbar -- zero fermion mass."
+		      << Exception::runerror; 
   double im=gw*Mf/2/MW;
   Complex c = Complex(0.,im);
   //cout<<"c: "<<c<<endl; 
@@ -146,7 +148,8 @@ Complex MatchboxAmplitudehbbbar::evaluate(size_t, const vector<int>& hel, Comple
     //cout<<"largeN minus hat geklappt"<<largeN;
     return(largeN);
   }
-  cout<<"Fehler"; return(0);
+  assert(false);
+  return 0;
 }
 
 Complex MatchboxAmplitudehbbbar::evaluateOneLoop(size_t, const vector<int>& hel) {
@@ -158,7 +161,7 @@ Complex MatchboxAmplitudehbbbar::evaluateOneLoop(size_t, const vector<int>& hel)
   
   for (;q<3;++q){if (x[q]->id()!= 25 && x[q]->id()>0 ) break;} 
   for (;qbar<3;++qbar){if (x[qbar]->id() ==-x[q]->id()) break;} 
-  double gw = sqrt(4*Constants::pi*SM().alphaEM()) / sqrt(SM().sin2ThetaW());
+  double gw = sqrt(4*Constants::pi*SM().alphaEMMZ()) / sqrt(SM().sin2ThetaW());
   
   long id=x[q]->id();
   Energy Mf = 0*GeV;
@@ -169,7 +172,9 @@ Complex MatchboxAmplitudehbbbar::evaluateOneLoop(size_t, const vector<int>& hel)
     case 4 : Mf = interfaceCMass; break;
     case 5 : Mf = interfaceBMass; break;
   }
-  if (Mf==0*GeV) cout<<"Check infile. The incoming particles need to be massive!"; 
+  if (Mf==0*GeV) 
+    throw Exception() << "Invalid settings in MatchboxAmplitudehbbbar -- zero fermion mass."
+		      << Exception::runerror; 
   
   double loop = SM().alphaS()*CF/2/Constants::pi ; //one-loop-Factor
   double bornim = gw*Mf/2/MW; //constant factor from born
@@ -192,7 +197,8 @@ Complex MatchboxAmplitudehbbbar::evaluateOneLoop(size_t, const vector<int>& hel)
     res = c*(minusProduct(qbar,q));
     return(res);
   }
-  cout<<"Fehler"; return(0);
+  assert(false);
+  return 0;
 }
 
 
@@ -214,7 +220,7 @@ void MatchboxAmplitudehbbbar::persistentInput(PersistentIStream &is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxAmplitudehbbbar,MatchboxAmplitude>
-  describeHerwigMatchboxAmplitudehbbbar("Herwig::MatchboxAmplitudehbbbar", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudehbbbar("Herwig::MatchboxAmplitudehbbbar", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudehbbbar::Init() {
 
@@ -222,27 +228,27 @@ void MatchboxAmplitudehbbbar::Init() {
     ("MatchboxAmplitudehbbbar");
   static Parameter<MatchboxAmplitudehbbbar,Energy> interfaceUMass
     ("interfaceUMass",
-     "The up quark mass.",
+     "The up quark mass to be used in the amplitude.",
      &MatchboxAmplitudehbbbar::interfaceUMass, GeV, 0.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
   static Parameter<MatchboxAmplitudehbbbar,Energy> interfaceDMass
     ("interfaceDMass",
-     "The down quark mass.",
+     "The down quark mass to be used in the amplitude.",
      &MatchboxAmplitudehbbbar::interfaceDMass, GeV, 0.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
   static Parameter<MatchboxAmplitudehbbbar,Energy> interfaceSMass
     ("interfaceSMass",
-     "The strange quark mass.",
+     "The strange quark mass to be used in the amplitude.",
      &MatchboxAmplitudehbbbar::interfaceSMass, GeV, 0.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
   static Parameter<MatchboxAmplitudehbbbar,Energy> interfaceCMass
     ("interfaceCMass",
-     "The charm quark mass.",
+     "The charm quark mass to be used in the amplitude.",
      &MatchboxAmplitudehbbbar::interfaceCMass, GeV, 0.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
   static Parameter<MatchboxAmplitudehbbbar,Energy> interfaceBMass
     ("interfaceBMass",
-     "The bottom quark mass.",
+     "The bottom quark mass to be used in the amplitude.",
      &MatchboxAmplitudehbbbar::interfaceBMass, GeV, 0.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
   

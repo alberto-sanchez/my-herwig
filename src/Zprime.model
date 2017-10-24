@@ -1,3 +1,5 @@
+# -*- ThePEG-repository -*-
+
 ##################################################
 # Common setup for Zprime models
 #
@@ -27,8 +29,8 @@ mkdir /Herwig/NewPhysics/Zprime
 cd /Herwig/NewPhysics/Zprime
 create Herwig::ZprimeModel Model HwZprimeModel.so
 # SM couplings
-set Model:QCD/RunningAlphaS /Herwig/AlphaS
-set Model:EW/RunningAlphaEM /Herwig/AlphaEM
+set Model:QCD/RunningAlphaS /Herwig/Couplings/NLOAlphaS
+set Model:EW/RunningAlphaEM /Herwig/Couplings/AlphaEM
 set Model:EW/CKM /Herwig/CKM
 set Model:RunningMass /Herwig/RunningMass
 
@@ -123,6 +125,4 @@ set Zprime/Model:ModelGenerator NewModel
 #
 ###################################################
 cd /Herwig/Generators
-set LEPGenerator:StandardModelParameters  /Herwig/NewPhysics/Zprime/Model
-set LHCGenerator:StandardModelParameters  /Herwig/NewPhysics/Zprime/Model
-
+set EventGenerator:StandardModelParameters  /Herwig/NewPhysics/Zprime/Model

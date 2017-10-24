@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SubtractionDipole.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// SubtractionDipole.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_SubtractionDipole_H
@@ -12,19 +12,19 @@
 // This is the declaration of the SubtractionDipole class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/TildeKinematics.fh"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/InvertedTildeKinematics.fh"
 
 #include "ThePEG/MatrixElement/MEBase.h"
 #include "ThePEG/Handlers/StandardXComb.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
-#include "Herwig++/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
 
 namespace Herwig {
 
 using namespace ThePEG;
-
-class TildeKinematics;
-class InvertedTildeKinematics;
 
 /**
  * \ingroup Matchbox
@@ -54,8 +54,59 @@ public:
 
 public:
 
+  /**
+   * Return the factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr factory() const;
+
+  /**
+   * Set the factory which produced this matrix element
+   */
+  void factory(Ptr<MatchboxFactory>::tptr f);
+
   /** @name Subprocess and diagram information. */
   //@{
+
+  /**
+   * A helpre struct to communicate diagram merging and remapping
+   * information
+   */
+  struct MergeInfo {
+
+    /**
+     * The merged emitter
+     */
+    int emitter;
+
+    /**
+     * The Born diagram
+     */
+    Ptr<Tree2toNDiagram>::ptr diagram;
+
+    /**
+     * The merging map
+     */
+    map<int,int> mergeLegs;
+
+  };
+
+  /**
+   * Return true, if this dipole can possibly handle the indicated
+   * emitter.
+   */
+  virtual bool canHandleEmitter(const cPDVector& partons, int emitter) const = 0;
+
+  /**
+   * Return true, if this dipole can possibly handle the indicated
+   * splitting.
+   */
+  virtual bool canHandleSplitting(const cPDVector& partons, int emitter, int emission) const = 0;
+
+  /**
+   * Return true, if this dipole can possibly handle the indicated
+   * spectator.
+   */
+  virtual bool canHandleSpectator(const cPDVector& partons, int spectator) const = 0;
 
   /**
    * Return true, if this dipole applies to the selected
@@ -84,7 +135,7 @@ public:
   /**
    * Setup bookkeeping maps.
    */
-  void setupBookkeeping();
+  void setupBookkeeping(const map<Ptr<DiagramBase>::ptr,MergeInfo>& mergeInfo,bool slim);
 
   /**
    * Get bookkeeping information for the given
@@ -136,7 +187,7 @@ public:
   /**
    * Return true, if bookkeeping did not find a non-trivial setup.
    */
-  bool empty() const { return theSplittingMap.empty(); }
+  bool empty() const { return theSplittingMap.empty()&&theMergingMap.empty(); }
 
   /**
    * Return the emitter as referred to by the real emission
@@ -302,10 +353,20 @@ public:
   const DiagramVector& underlyingBornDiagrams(const cPDVector& real) const;
 
   /**
+   * Find the underlying Born diagram for the given real emission diagram
+   */
+  tcDiagPtr underlyingBornDiagram(tcDiagPtr realDiag) const;
+
+  /**
    * Return the real emission diagrams to be considered
    * for the given Born process.
    */
   const DiagramVector& realEmissionDiagrams(const cPDVector& born) const;
+
+  /**
+   * Find the real emission diagram for the given underlying Born diagram
+   */
+  tcDiagPtr realEmissionDiagram(tcDiagPtr bornDiag) const;
 
   /**
    * Add all possible diagrams with the add() function.
@@ -328,14 +389,6 @@ public:
    * (although certainly not physical) relative probabilities.
    */
   virtual Selector<DiagramIndex> diagrams(const DiagramVector & dv) const;
-
-  /**
-   * Select a diagram. Default version uses diagrams(const
-   * DiagramVector &) to select a diagram according to the
-   * weights. This is the only method used that should be outside of
-   * MEBase.
-   */
-  virtual DiagramIndex diagram(const DiagramVector & dv) const;
 
   /**
    * Return a Selector with possible colour geometries for the selected
@@ -495,6 +548,13 @@ public:
   }
 
   /**
+   * Return the relevant momentum fractions
+   */
+  double lastZ() const {
+    return splitting() ? theLastSplittingZ : theLastSubtractionZ;
+  }
+
+  /**
    * Return true, if this dipole acts in splitting mode.
    */
   bool splitting() const { return theSplitting; }
@@ -518,6 +578,56 @@ public:
    * Access the subtraction parameters.
    */
   vector<double>& subtractionParameters() { return theSubtractionParameters; }
+
+  /**
+   * Return the shower hard scale encountered
+   */
+  Energy showerHardScale() const { return theShowerHardScale; }
+
+  /**
+   * Set the shower hard scale encountered
+   */
+  void showerHardScale(Energy s) { theShowerHardScale = s; }
+
+  /**
+   * Return the shower evolution scale encountered
+   */
+  Energy showerScale() const { return theShowerScale; }
+
+  /**
+   * Set the shower evolution scale encountered
+   */
+  void showerScale(Energy s) { theShowerScale = s; }
+
+  /**
+   * Return the shower splitting variables encountered
+   */
+  const vector<double>& showerParameters() const { return theShowerParameters; }
+
+  /**
+   * Access the shower splitting variables encountered
+   */
+  vector<double>& showerParameters() { return theShowerParameters; }
+
+  /**
+   * Return true, if this configuration is in the shower phase space
+   */
+  bool isInShowerPhasespace() const { return theIsInShowerPhasespace; }
+
+  /**
+   * Indicate whether this configuration is in the shower phase space
+   */
+  void isInShowerPhasespace(bool yes) { theIsInShowerPhasespace = yes; }
+
+  /**
+   * Return true, if this configuration is above the shower infrared cutoff
+   */
+  bool isAboveCutoff() const { return theIsAboveCutoff; }
+
+  /**
+   * Indicate whether this configuration is above the shower infrared cutoff
+   */
+  void isAboveCutoff(bool yes) { theIsAboveCutoff = yes; }
 
   //@}
 
@@ -578,6 +688,15 @@ public:
    */
   virtual bool havePDFWeight2() const { return realEmissionME()->havePDFWeight2(); }
 
+  /**
+   *  How to sample the z-distribution.
+   *  FlatZ = 1
+   *  OneOverZ = 2
+   *  OneOverOneMinusZ = 3
+   *  OneOverZOneMinusZ = 4
+   */
+
+  virtual int samplingZ() const {return 4;}
   //@}
 
   /** @name Matrix elements and evaluation */
@@ -624,14 +743,14 @@ public:
   /**
    * Set the dipoles which have been found along with this dipole
    */
-  void partnerDipoles(const vector<Ptr<SubtractionDipole>::ptr>& p) {
+  void partnerDipoles(const vector<Ptr<SubtractionDipole>::tptr>& p) {
     thePartners = p;
   }
 
   /**
    * Return the dipoles which have been found along with this dipole
    */
-  const vector<Ptr<SubtractionDipole>::ptr>& partnerDipoles() const {
+  const vector<Ptr<SubtractionDipole>::tptr>& partnerDipoles() const {
     return thePartners;
   }
 
@@ -639,18 +758,6 @@ public:
    * Return the matrix element averaged over spin correlations.
    */
   virtual double me2Avg(double ccme2) const = 0;
-
-  /**
-   * Return true, if the cross section should actually return the spin
-   * averaged splitting function times the Born matrix element squared.
-   */
-  bool showerKernel() const { return theShowerKernel; }
-
-  /**
-   * Indicate that the cross section should actually return the spin
-   * averaged splitting function times the Born matrix element squared.
-   */
-  void doShowerKernel(bool is = true) { theShowerKernel = is; }
 
   /**
    * Return the matrix element squared differential in the variables
@@ -662,7 +769,31 @@ public:
    * Return the matrix element squared differential in the variables
    * given by the last call to generateKinematics().
    */
-  virtual CrossSection dSigHatDR() const { return dSigHatDR(ZERO); }  
+  virtual CrossSection dSigHatDR() const { return dSigHatDR(ZERO); }
+
+      
+        /// calculate the general prefactor for merging.
+  CrossSection prefactor(Energy2 factorizationScale)const;
+      
+  /**
+   *  Calculate the parton shower approximation for this dipole.
+   **/
+      
+  CrossSection ps(Energy2 factorizationScale,Ptr<ColourBasis>::tptr largeNBasis) const;
+
+  /**
+   *  Calculate the dipole with clusterfsafe flag.
+   **/
+
+  CrossSection dip(Energy2 factorizationScale) const;
+
+  
+
+  /**
+   *  Calculate the dipole dSigDR and the parton shower approximation for this dipole.
+   **/
+
+  pair<CrossSection,CrossSection> dipandPs(Energy2 factorizationScale,Ptr<ColourBasis>::tptr largeNBasis) const;
 
   //@}
 
@@ -700,6 +831,16 @@ public:
    * Return true, if the shower virtual contribution should be subtracted.
    */
   bool virtualShowerSubtraction() const { return theVirtualShowerSubtraction; }
+
+  /**
+   * Indicate that the loopsim matched virtual contribution should be subtracted.
+   */
+  void doLoopSimSubtraction() { theLoopSimSubtraction = true; }
+
+  /**
+   * Return true, if the loopsim matched virtual contribution should be subtracted.
+   */
+  bool loopSimSubtraction() const { return theLoopSimSubtraction; }
 
   //@}
 
@@ -797,7 +938,8 @@ public:
   /**
    * Clone the dependencies, using a given prefix.
    */
-  void cloneDependencies(const std::string& prefix = "");
+      
+  void cloneDependencies(const std::string& prefix = "", bool slim=false);
 
   //@}
 
@@ -810,6 +952,11 @@ public:
   virtual void constructVertex(tSubProPtr sub);
 
   /**
+   * construct the spin information for the interaction
+   */
+  virtual void constructVertex(tSubProPtr sub, const ColourLines* cl);
+
+  /**
    * Comlete a SubProcess object using the internal degrees of freedom
    * generated in the last generateKinematics() (and possible other
    * degrees of freedom which was intergated over in dSigHatDR(). This
@@ -817,6 +964,19 @@ public:
    * future.
    */
   virtual void generateSubCollision(SubProcess & sub);
+      
+  /**
+   * Alpha parameter as in Nagy
+   * (http://arxiv.org/pdf/hep-ph/0307268v2.pdf) to restrict dipole
+   * phase space
+   */
+   double alpha() const;
+      
+   /*
+    * True if phase space point is above the alpha cut for this dipole.
+    */
+      
+   bool aboveAlpha() const;
 
   //@}
 
@@ -846,7 +1006,31 @@ public:
    */
   static void Init();
 
+protected:
+
+  /** @name Standard Interfaced functions. */
+  //@{
+
+  /**
+   * Initialize this object after the setup phase before saving an
+   * EventGenerator to disk.
+   * @throws InitException if object could not be initialized properly.
+   */
+  virtual void doinit();
+
+  /**
+   * Initialize this object. Called in the run phase just before
+   * a run begins.
+   */
+  virtual void doinitrun();
+  //@}
+
 private:
+
+  /**
+   * The factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr theFactory;
 
   /**
    * Wether or not this dipole acts in splitting mode.
@@ -869,12 +1053,6 @@ private:
   bool theIgnoreCuts;
 
   /**
-   * True, if the cross section should actually return the spin
-   * averaged splitting function times the Born matrix element squared.
-   */
-  bool theShowerKernel;
-
-  /**
    * The real emission matrix element to be considered
    */
   Ptr<MatchboxMEBase>::ptr theRealEmissionME;
@@ -887,7 +1065,7 @@ private:
   /**
    * The dipoles which have been found along with this dipole
    */
-  vector<Ptr<SubtractionDipole>::ptr> thePartners;
+  vector<Ptr<SubtractionDipole>::tptr> thePartners;
 
   /**
    * The TildeKinematics to be used.
@@ -956,6 +1134,16 @@ private:
   map<cPDVector,DiagramVector> theRealEmissionDiagrams;
 
   /**
+   * Map underlying Born diagrams to real emission diagrams.
+   */
+  map<tcDiagPtr,tcDiagPtr> theBornToRealDiagrams;
+
+  /**
+   * Map real emission diagrams to underlying Born diagrams.
+   */
+  map<tcDiagPtr,tcDiagPtr> theRealToBornDiagrams;
+
+  /**
    * The last real emission key encountered
    */
   RealEmissionKey lastRealEmissionKey;
@@ -1003,6 +1191,16 @@ private:
   Energy theLastSplittingPt;
 
   /**
+   * The last z as generated from the tilde mapping
+   */
+  double theLastSubtractionZ;
+
+  /**
+   * The last z as generated from the splitting mapping
+   */
+  double theLastSplittingZ;
+
+  /**
    * The shower approximation.
    */
   Ptr<ShowerApproximation>::ptr theShowerApproximation;
@@ -1018,9 +1216,39 @@ private:
   bool theVirtualShowerSubtraction;
 
   /**
+   * True, if the loopsim matched virtual contribution should be subtracted.
+   */
+  bool theLoopSimSubtraction;
+
+  /**
    * True, if scales should be calculated from real emission kinematics
    */
   bool theRealEmissionScales;
+
+  /**
+   * Return the shower hard scale encountered
+   */
+  Energy theShowerHardScale;
+
+  /**
+   * The shower evolution scale encountered
+   */
+  Energy theShowerScale;
+
+  /**
+   * The shower splitting variables encountered
+   */
+  vector<double> theShowerParameters;
+
+  /**
+   * True, if this configuration is in the shower phase space
+   */
+  bool theIsInShowerPhasespace;
+
+  /**
+   * True, if this configuration is above the shower infrared cutoff
+   */
+  bool theIsAboveCutoff;
 
 private:
 

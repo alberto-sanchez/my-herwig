@@ -5,7 +5,7 @@
 // This is the declaration of the MEee2gZ2qqPowheg class.
 //
 
-#include "Herwig++/MatrixElement/Lepton/MEee2gZ2qq.h"
+#include "Herwig/MatrixElement/Lepton/MEee2gZ2qq.h"
 
 namespace Herwig {
 
@@ -24,7 +24,8 @@ public:
   /**
    * The default constructor.
    */
-  MEee2gZ2qqPowheg() : contrib_(1), zPow_(0.5), yPow_(0.9)
+  MEee2gZ2qqPowheg() : contrib_(1), corrections_(1),
+		       zPow_(0.5), yPow_(0.9)
   {}
 
 public:
@@ -120,6 +121,11 @@ private:
    *  Whether to generate the positive, negative or leading order contribution
    */
   unsigned int contrib_;
+
+  /**
+   *   Which corrections to included
+   */
+  unsigned int corrections_;
 
   /**
    *  Phase-space sampling for z

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipoleMatching.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipoleMatching.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -24,12 +24,11 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
 
 using namespace Herwig;
 
-DipoleMatching::DipoleMatching() 
-  : theShowerKernels(true) {}
+DipoleMatching::DipoleMatching() {}
 
 DipoleMatching::~DipoleMatching() {}
 
@@ -45,15 +44,26 @@ CrossSection DipoleMatching::dSigHatDR() const {
 
   double xme2 = 0.;
 
-  if ( !theShowerKernels ) {
-    xme2 = dipole()->me2();
-  } else {
-    pair<int,int> ij(dipole()->bornEmitter(),
-		     dipole()->bornSpectator());
-    double ccme2 = 
-      dipole()->underlyingBornME()->largeNColourCorrelatedME2(ij,theLargeNBasis);
-    xme2 = dipole()->me2Avg(ccme2);
-  }
+  pair<int,int> ij(dipole()->bornEmitter(),
+		   dipole()->bornSpectator());
+  double ccme2 = 
+    dipole()->underlyingBornME()->largeNColourCorrelatedME2(ij,theLargeNBasis);
+
+   if(ccme2==0.)return 0.*nanobarn;
+      
+   double lnme2=dipole()->underlyingBornME()->largeNME2(theLargeNBasis);
+   if(lnme2==0){
+     generator()->log() <<"\nDipoleMatching: ";
+     generator()->log() <<"\n  LargeNME2 is ZERO, while largeNColourCorrelatedME2 is not ZERO." ;
+     generator()->log() <<"\n  This is too seriuos.\n" ;
+     generator()->log() << Exception::runerror;
+   }    
+    
+    
+  ccme2 *=
+    dipole()->underlyingBornME()->me2() /lnme2;
+
+  xme2 = dipole()->me2Avg(ccme2);
 
   xme2 /= dipole()->underlyingBornME()->lastXComb().lastAlphaS();
   double bornPDF = bornPDFWeight(dipole()->underlyingBornME()->lastScale());
@@ -61,8 +71,8 @@ CrossSection DipoleMatching::dSigHatDR() const {
     return ZERO;
   xme2 *= bornPDF;
 
-  if ( restrictPhasespace() )
-    xme2 *= hardScaleProfile(hardScale(),dipole()->lastPt());
+  if ( profileScales() )
+    xme2 *= profileScales()->hardScaleProfile(dipole()->showerHardScale(),dipole()->lastPt());
 
   CrossSection res = 
     sqr(hbarc) * 
@@ -76,8 +86,8 @@ CrossSection DipoleMatching::dSigHatDR() const {
 }
 
 double DipoleMatching::me2() const {
-  throw Exception() << "Not intented to use. Disable the ShowerApproximationGenerator."
-		    << Exception::abortnow;
+  throw Exception() << "DipoleMatching::me2(): Not intented to use. Disable the ShowerApproximationGenerator."
+		    << Exception::runerror;
   return 0.;
 }
 
@@ -86,13 +96,25 @@ double DipoleMatching::me2() const {
 
 
 void DipoleMatching::persistentOutput(PersistentOStream & os) const {
-  os << theShowerKernels << theLargeNBasis;
+  os << theShowerHandler;
 }
 
 void DipoleMatching::persistentInput(PersistentIStream & is, int) {
-  is >> theShowerKernels >> theLargeNBasis;
+  is >> theShowerHandler;
 }
 
+void DipoleMatching::doinit() {
+  if ( theShowerHandler ) {
+    hardScaleFactor(theShowerHandler->hardScaleFactor());
+    factorizationScaleFactor(theShowerHandler->factorizationScaleFactor());
+    renormalizationScaleFactor(theShowerHandler->renormalizationScaleFactor());
+    profileScales(theShowerHandler->profileScales());
+    restrictPhasespace(theShowerHandler->restrictPhasespace());
+    hardScaleIsMuF(theShowerHandler->hardScaleIsMuF());
+  }
+  // need to fo this after for consistency checks
+  ShowerApproximation::doinit();
+}
 
 // *** Attention *** The following static variable is needed for the type
 // description system in ThePEG. Please check that the template arguments
@@ -100,33 +122,18 @@ void DipoleMatching::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<DipoleMatching,Herwig::ShowerApproximation>
-  describeHerwigDipoleMatching("Herwig::DipoleMatching", "HwMatchbox.so");
+  describeHerwigDipoleMatching("Herwig::DipoleMatching", "HwDipoleMatching.so HwShower.so");
 
 void DipoleMatching::Init() {
 
   static ClassDocumentation<DipoleMatching> documentation
     ("DipoleMatching implements NLO matching with the dipole shower.");
 
-  static Reference<DipoleMatching,ColourBasis> interfaceLargeNBasis
-    ("LargeNBasis",
-     "Set the large-N colour basis implementation.",
-     &DipoleMatching::theLargeNBasis, false, false, true, true, false);
-
-
-  static Switch<DipoleMatching,bool> interfaceShowerKernels
-    ("ShowerKernels",
-     "Switch between exact and shower approximated dipole functions.",
-     &DipoleMatching::theShowerKernels, true, false, false);
-  static SwitchOption interfaceShowerKernelsOn
-    (interfaceShowerKernels,
-     "On",
-     "Switch to shower approximated dipole functions.",
-     true);
-  static SwitchOption interfaceShowerKernelsOff
-    (interfaceShowerKernels,
-     "Off",
-     "Switch to full dipole functions.",
-     false);
+  static Reference<DipoleMatching,ShowerHandler> interfaceShowerHandler
+    ("ShowerHandler",
+     "The dipole shower handler object to use.",
+     &DipoleMatching::theShowerHandler, false, false, true, true, false);
+  interfaceShowerHandler.rank(-1);
 
 }
 

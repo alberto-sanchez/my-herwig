@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FILightTildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FILightTildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -68,6 +68,31 @@ Energy FILightTildeKinematics::lastPt() const {
 
 }
 
+Energy FILightTildeKinematics::lastPt(Lorentz5Momentum emitter,Lorentz5Momentum emission,Lorentz5Momentum spectator)const {
+
+  
+  Energy2 scale =  - (emitter+emission-spectator).m2();
+  
+  
+  double x =
+  (- emission*emitter + emission*spectator + emitter*spectator) /
+  (emitter*spectator + emission*spectator);
+  double z = emitter*spectator / (emitter*spectator + emission*spectator);
+  
+  return sqrt( z*(1.-z)*(1.-x)/x*scale ) ;
+}
+
+pair<double,double> FILightTildeKinematics::zBounds(Energy pt, Energy hardPt) const {
+  if(pt>hardPt) return make_pair(0.5,0.5);
+  double s = sqrt(1.-sqr(pt/hardPt));
+  return make_pair(0.5*(1.-s),0.5*(1.+s));
+}
+
+
+
+double FILightTildeKinematics::lastZ() const {
+  return subtractionParameters()[1];
+}
 
 // If needed, insert default implementations of virtual function defined
 // in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
@@ -93,4 +118,4 @@ void FILightTildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FILightTildeKinematics,TildeKinematics>
-describeHerwigFILightTildeKinematics("Herwig::FILightTildeKinematics", "HwMatchbox.so");
+describeHerwigFILightTildeKinematics("Herwig::FILightTildeKinematics", "Herwig.so");

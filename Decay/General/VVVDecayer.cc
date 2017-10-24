@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// VVVDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// VVVDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -17,7 +17,8 @@
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/PDT/DecayMode.h"
 #include "ThePEG/Helicity/WaveFunction/VectorWaveFunction.h"
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -58,6 +59,8 @@ void VVVDecayer::Init() {
 double VVVDecayer::me2(const int , const Particle & inpart,
                        const ParticleVector & decay,
 		       MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin1,PDT::Spin1,PDT::Spin1)));
   bool massless[2];
   for(unsigned int ix=0;ix<2;++ix) 
     massless[ix] = (decay[ix]->id()==ParticleID::gamma ||
@@ -66,7 +69,6 @@ double VVVDecayer::me2(const int , const Particle & inpart,
     VectorWaveFunction::calculateWaveFunctions(_vectors[0],_rho,
 					       const_ptr_cast<tPPtr>(&inpart),
 					       incoming,false);
-    ME(DecayMatrixElement(PDT::Spin1,PDT::Spin1,PDT::Spin1));
   }
   if(meopt==Terminate) {
     VectorWaveFunction::constructSpinInfo(_vectors[0],const_ptr_cast<tPPtr>(&inpart),
@@ -83,12 +85,12 @@ double VVVDecayer::me2(const int , const Particle & inpart,
   for(unsigned int iv3=0;iv3<3;++iv3) {
     for(unsigned int iv2=0;iv2<3;++iv2) {
       for(unsigned int iv1=0;iv1<3;++iv1) {
-	ME()(iv1,iv2,iv3) = _abstractVertex->
+	(*ME())(iv1,iv2,iv3) = _abstractVertex->
 	  evaluate(scale,_vectors[1][iv2],_vectors[2][iv3],_vectors[0][iv1]);
       }
     }
   }
-  double output = (ME().contract(_rho)).real()/scale*UnitRemoval::E2;
+  double output = (ME()->contract(_rho)).real()/scale*UnitRemoval::E2;
   // colour and identical particle factors
   output *= colourFactor(inpart.dataPtr(),decay[0]->dataPtr(),
 			 decay[1]->dataPtr());

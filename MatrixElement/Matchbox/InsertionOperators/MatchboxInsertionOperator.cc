@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxInsertionOperator.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxInsertionOperator.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -18,13 +18,18 @@
 #include "ThePEG/Utilities/Rebinder.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
 
 using namespace Herwig;
 
+Ptr<MatchboxFactory>::tptr MatchboxInsertionOperator::factory() const { return theFactory; }
+
+void MatchboxInsertionOperator::factory(Ptr<MatchboxFactory>::tptr f) { theFactory = f; }
+
 MatchboxInsertionOperator::MatchboxInsertionOperator() 
-  : HandlerBase(),
-    theUseDR(false), theUseCS(false), theUseBDK(false), theUseExpanded(false) {}
+  : HandlerBase() {}
 
 MatchboxInsertionOperator::~MatchboxInsertionOperator() {}
 
@@ -38,14 +43,37 @@ CrossSection MatchboxInsertionOperator::dSigHatDR() const {
     (2.*lastSHat());
 }
 
+Ptr<MatchboxMEBase>::tptr MatchboxInsertionOperator::lastBorn() const {
+    if(lastMatchboxXComb()->matchboxME()) return lastMatchboxXComb()->matchboxME();
+     else{
+       assert(lastMatchboxXComb()->subtractionDipole());
+       return lastMatchboxXComb()->subtractionDipole()->underlyingBornME();
+     }
+}
+
+
+
+bool MatchboxInsertionOperator::isDRbar() const { return lastBorn()->isDRbar(); }
+
+bool MatchboxInsertionOperator::isDR() const { return lastBorn()->isDR(); }
+
+bool MatchboxInsertionOperator::isCS() const { return lastBorn()->isCS(); }
+
+bool MatchboxInsertionOperator::isBDK() const { return lastBorn()->isBDK(); }
+
+bool MatchboxInsertionOperator::isExpanded() const { return lastBorn()->isExpanded(); }
+
+
+
+
+
+
 void MatchboxInsertionOperator::persistentOutput(PersistentOStream & os) const {
-  os << theLastXComb
-     << theUseDR << theUseCS << theUseBDK << theUseExpanded;
+  os << theLastXComb << theFactory ;
 }
 
 void MatchboxInsertionOperator::persistentInput(PersistentIStream & is, int) {
-  is >> theLastXComb
-     >> theUseDR >> theUseCS >> theUseBDK >> theUseExpanded;
+  is >> theLastXComb >> theFactory ;
   lastMatchboxXComb(theLastXComb);
 }
 
@@ -63,5 +91,5 @@ void MatchboxInsertionOperator::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeAbstractClass<MatchboxInsertionOperator,HandlerBase>
-describeMatchboxInsertionOperator("Herwig::MatchboxInsertionOperator", "HwMatchbox.so");
+describeMatchboxInsertionOperator("Herwig::MatchboxInsertionOperator", "Herwig.so");
 

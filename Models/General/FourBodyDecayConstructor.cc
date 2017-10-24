@@ -16,9 +16,9 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/PDT/DecayMode.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
-#include "Herwig++/Decay/General/GeneralFourBodyDecayer.h"
-#include "Herwig++/Decay/DecayPhaseSpaceMode.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
+#include "Herwig/Decay/General/GeneralFourBodyDecayer.h"
+#include "Herwig/Decay/DecayPhaseSpaceMode.h"
 #include "DecayConstructor.h"
 
 using namespace Herwig;
@@ -155,16 +155,6 @@ createDecayMode(vector<NBDiagram> & diagrams,
   }
   tag += ";";
   tDMPtr dm = generator()->findDecayMode(tag);
-  // if mode disabled zero BR and return
-  if( decayConstructor()->disableDecayMode(tag) ) {
-    // If mode alread exists, ie has been read from file, 
-    // disable it
-    if( dm ) {
-      generator()->preinitInterface(dm, "BranchingRatio", "set", "0.0");
-      generator()->preinitInterface(dm, "OnOff", "set", "Off");
-    }
-    return;
-  }
   // create mode if needed
   if( createDecayModes() && (!dm || inpart->id() == ParticleID::h0) ) {
     // create the decayer
@@ -179,7 +169,7 @@ createDecayMode(vector<NBDiagram> & diagrams,
     if(ndm) {
       string test = generator()->preinitInterface(ndm, "Decayer", "set",
 						  decayer->fullName());
-      generator()->preinitInterface(ndm, "OnOff", "set", "On");
+      generator()->preinitInterface(ndm, "Active", "set", "Yes");
       Energy width = 
 	decayer->partialWidth(inpart,outgoing);
       setBranchingRatio(ndm, width);

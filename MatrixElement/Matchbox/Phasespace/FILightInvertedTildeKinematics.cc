@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FILightInvertedTildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FILightInvertedTildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -60,6 +60,8 @@ bool FILightInvertedTildeKinematics::doMap(const double * r) {
     return false;
   }
 
+  // This should (and does) have a factor of 1/x relative to
+  // the dipole shower jacobian. 
   mapping /= z*(1.-z);
   jacobian(mapping*(sqr(lastScale())/sHat())/(16.*sqr(Constants::pi)));
 
@@ -95,20 +97,21 @@ Energy FILightInvertedTildeKinematics::lastPt() const {
 
 }
 
+double FILightInvertedTildeKinematics::lastZ() const {
+  return subtractionParameters()[1];
+}
+
 Energy FILightInvertedTildeKinematics::ptMax() const {
   double x = spectatorX();
   return sqrt((1.-x)/x)*lastScale()/2.;
 }
 
-pair<double,double> FILightInvertedTildeKinematics::zBounds(Energy pt) const {
-  double s = sqrt(1.-sqr(pt/ptMax()));
+pair<double,double> FILightInvertedTildeKinematics::zBounds(Energy pt, Energy hardPt) const {
+  hardPt = hardPt == ZERO ? ptMax() : min(hardPt,ptMax());
+  if(pt>hardPt) return make_pair(0.5,0.5);
+  double s = sqrt(1.-sqr(pt/hardPt));
   return make_pair(0.5*(1.-s),0.5*(1.+s));
 }
-
-
-// If needed, insert default implementations of virtual function defined
-// in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
-
 
 void FILightInvertedTildeKinematics::persistentOutput(PersistentOStream &) const {
 }
@@ -130,4 +133,4 @@ void FILightInvertedTildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FILightInvertedTildeKinematics,InvertedTildeKinematics>
-describeHerwigFILightInvertedTildeKinematics("Herwig::FILightInvertedTildeKinematics", "HwMatchbox.so");
+describeHerwigFILightInvertedTildeKinematics("Herwig::FILightInvertedTildeKinematics", "Herwig.so");

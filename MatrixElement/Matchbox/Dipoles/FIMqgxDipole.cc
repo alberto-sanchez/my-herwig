@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FIqgxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FIqgxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,9 +20,11 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FILightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FILightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+//#include "Herwig/MatrixElement/Matchbox/Phasespace/FILightTildeKinematics.h"
+//#include "Herwig/MatrixElement/Matchbox/Phasespace/FILightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FIMassiveTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FIMassiveInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -44,9 +46,10 @@ bool FIMqgxDipole::canHandle(const cPDVector& partons,
   return
     emitter > 1 && spectator < 2 &&
     partons[emission]->id() == ParticleID::g &&
-    abs(partons[emitter]->id()) < 6 &&
-    !(partons[emitter]->mass() == ZERO &&
-      partons[spectator]->mass() == ZERO);
+//     abs(partons[emitter]->id()) < 7 &&
+    ( abs(partons[emitter]->id()) < 7 || abs(partons[emitter]->id()) == 1000021 ) &&
+    partons[emitter]->hardProcessMass() != ZERO &&
+    partons[spectator]->hardProcessMass() == ZERO;
 }
 
 double FIMqgxDipole::me2Avg(double ccme2) const {
@@ -63,14 +66,21 @@ double FIMqgxDipole::me2Avg(double ccme2) const {
 
   double CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
 
+  if ( realEmissionME()->lastXComb().mePartonData()[realEmitter()]->id() == 1000021 )
+    CF = SM().Nc(); // For the SUSY D_{gluino,g}^a subtraction dipole we need to replace CF by CA=Nc
+
   // extra mass terms cancel
   double res =
     8.*Constants::pi*CF*(realEmissionME()->lastXComb().lastSHat())*
     (underlyingBornME()->lastXComb().lastAlphaS())/prop;
 
   // NOTE: extra term taken from FIqgxDipole implementation
-  res *= ( 2./(1.-z+(1.-x)) -(1.+z) +(1.-x)*(1.+3.*x*z) -
-	   sqr(realEmissionME()->lastXComb().mePartonData()[realEmission()]->mass()) / prop * 2.*x);
+  // NOTE: extra term switched off for the moment in the massive case
+  res *= ( 
+    2./(1.-z+(1.-x)) - (1.+z) 
+    // + (1.-x)*(1.+3.*x*z) 
+    - sqr(realEmissionME()->lastXComb().mePartonData()[realEmitter()]->hardProcessMass()) / prop * 2.*x
+    );
 
   res *= -ccme2;
 
@@ -100,14 +110,21 @@ double FIMqgxDipole::me2() const {
 
   double CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
 
+  if ( realEmissionME()->lastXComb().mePartonData()[realEmitter()]->id() == 1000021 )
+    CF = SM().Nc(); // For the SUSY D_{gluino,g}^a subtraction dipole we need to replace CF by CA=Nc
+
   // extra mass terms cancel
   double res =
     8.*Constants::pi*CF*(realEmissionME()->lastXComb().lastSHat())*
     (underlyingBornME()->lastXComb().lastAlphaS())/prop;
 
   // NOTE: extra term taken from FIqgxDipole implementation
-  res *= ( 2./(1.-z+(1.-x)) -(1.+z) +(1.-x)*(1.+3.*x*z) -
-	   sqr(realEmissionME()->lastXComb().mePartonData()[realEmission()]->mass()) / prop * 2.*x);
+  // NOTE: extra term switched off for the moment in the massive case
+  res *= ( 
+    2./(1.-z+(1.-x)) - (1.+z) 
+    // + (1.-x)*(1.+3.*x*z) 
+    - sqr(realEmissionME()->lastXComb().mePartonData()[realEmitter()]->hardProcessMass()) / prop * 2.*x
+    );
 
   res *= -underlyingBornME()->colourCorrelatedME2(make_pair(bornEmitter(),bornSpectator()));
 
@@ -134,8 +151,10 @@ void FIMqgxDipole::Init() {
   static ClassDocumentation<FIMqgxDipole> documentation
     ("FIMqgxDipole");
 
-  DipoleRepository::registerDipole<0,FIMqgxDipole,FILightTildeKinematics,FILightInvertedTildeKinematics>
-    ("FIMqgxDipole","FILightTildeKinematics","FILightInvertedTildeKinematics");
+//  DipoleRepository::registerDipole<0,FIMqgxDipole,FILightTildeKinematics,FILightInvertedTildeKinematics>
+//    ("FIMqgxDipole","FILightTildeKinematics","FILightInvertedTildeKinematics");
+  DipoleRepository::registerDipole<0,FIMqgxDipole,FIMassiveTildeKinematics,FIMassiveInvertedTildeKinematics>
+    ("FIMqgxDipole","FIMassiveTildeKinematics","FIMassiveInvertedTildeKinematics");
 
 }
 
@@ -145,4 +164,4 @@ void FIMqgxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FIMqgxDipole,SubtractionDipole>
-describeHerwigFIMqgxDipole("Herwig::FIMqgxDipole", "HwMatchbox.so");
+describeHerwigFIMqgxDipole("Herwig::FIMqgxDipole", "Herwig.so");

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxOLPME.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxOLPME.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MatchboxOLPME_H
@@ -12,7 +12,7 @@
 // This is the declaration of the MatchboxOLPME class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
 
 namespace Herwig {
 
@@ -47,7 +47,8 @@ public:
    * Return true, if this amplitude can handle the given process.
    */
   virtual bool canHandle(const PDVector& p,
-			 Ptr<MatchboxFactory>::tptr) const;
+			 Ptr<MatchboxFactory>::tptr,
+			 bool) const;
 
   /**
    * Set the (tree-level) order in \f$g_S\f$ in which this matrix
@@ -117,11 +118,21 @@ public:
 					   Ptr<ColourBasis>::tptr) const;
 
   /**
+   * Return the largeN matrix element squared.
+   */
+  virtual double largeNME2(Ptr<ColourBasis>::tptr largeNBasis) const;
+
+  /**
    * Return the colour and spin correlated matrix element.
    */
   virtual double spinColourCorrelatedME2(pair<int,int> ij,
 					 const SpinCorrelationTensor& c) const;
 
+  /**
+   * Return the spin correlated matrix element.
+   */
+  virtual double spinCorrelatedME2(pair<int,int> ij,
+				   const SpinCorrelationTensor& c) const;
 
   /**
    * Return true, if tree-level contributions will be evaluated at amplitude level.
@@ -156,7 +167,17 @@ public:
    * parameter. Note that renormalization scale dependence is fully
    * restored in DipoleIOperator.
    */
-  virtual Energy2 mu2() const { return lastSHat(); }
+  virtual Energy2 mu2() const;
+
+  /**
+   * Indicate that this amplitude is running alphas by itself.
+   */
+  virtual bool hasRunningAlphaS() const;
+
+  /**
+   * Indicate that this amplitude is running alphaew by itself.
+   */
+  virtual bool hasRunningAlphaEW() const;
 
   /**
    * If defined, return the coefficient of the pole in epsilon^2
@@ -196,6 +217,11 @@ public:
    */
   virtual void evalSpinColourCorrelator(pair<int,int> ij) const = 0;
 
+  /**
+   * Fill in results for the given spin correlator; may not be supported
+   */
+  virtual void evalSpinCorrelator(pair<int,int> ij) const;
+
 public:
 
   /** @name Functions used by the persistent I/O system. */
@@ -232,12 +258,34 @@ protected:
   /** @name Standard Interfaced functions. */
   //@{
   /**
+   * Initialize this object after the setup phase before saving an
+   * EventGenerator to disk.
+   * @throws InitException if object could not be initialized properly.
+   */
+  virtual void doinit();
+
+  /**
    * Initialize this object. Called in the run phase just before
    * a run begins.
    */
   virtual void doinitrun();
   //@}
 
+  /**
+   * Set an optional contract file name to be used
+   */
+  static string& optionalContractFile() {
+    static string s = "";
+    return s;
+  }
+
+  /**
+   * Indicate that the OLP has been started
+   */
+  static bool& didStartOLP() {
+    static bool f = false;
+    return f;
+  }
 
 private:
 
@@ -259,6 +307,23 @@ private:
    */
   unsigned int theOrderInGem;
 
+  /**
+   * Set the value of the dimensional regularization parameter 
+   * to the value of the renormalization scale
+   */
+  bool theSetMuToMuR;
+
+  /**
+   * Use the running alpha_s instead of the reference alpha_s.
+   * This also sets hasRunningAlphaS() to true.
+   */
+  bool theUseRunningAlphaS;
+
+  /**
+   * Use the running alpha_ew instead of the reference alpha_ew.
+   * This also sets hasRunningAlphaEW() to true.
+   */
+  bool theUseRunningAlphaEW;
 
 };
 

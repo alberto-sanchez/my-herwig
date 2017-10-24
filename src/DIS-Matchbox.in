@@ -1,162 +1,150 @@
-read Matchbox.in
+# -*- ThePEG-repository -*-
 
-################################################################################
-# setup the shower
-#
-# use -LO.in or -NLO.in for LO/NLO simulations, respectively.
-#
-################################################################################
+##################################################
+## Herwig/Matchbox example input file
+##################################################
 
-read DipoleShower.in
-# read DipoleShowerParameters-LO.in
-read DipoleShowerParameters-NLO.in
+##################################################
+## Collider type
+##################################################
+read snippets/Matchbox.in
+read snippets/EPCollider.in
 
-################################################################################
-# setup matrix element and matching
-#
-# uncomment the desired calculation
-#
-################################################################################
+##################################################
+## Beam energies
+##################################################
 
 cd /Herwig/EventHandlers
 
-set DISHandler:BeamA /Herwig/Particles/e+
-set DISLuminosity:BeamEMaxA 27.5.*GeV
-set DISHandler:BeamB /Herwig/Particles/p+
-set DISLuminosity:BeamEMaxB 820.*GeV
+##################################################
+## Process selection
+##################################################
+
+## Note that event generation may fail if no matching matrix element has
+## been found.  Coupling orders are with respect to the Born process,
+## i.e. NLO QCD does not require an additional power of alphas.
+
+## Model assumptions
+read Matchbox/StandardModelLike.in
+read Matchbox/DiagonalCKM.in
+
+## EP collider parameters
+cd /Herwig/EventHandlers
+set EventHandler:BeamA /Herwig/Particles/e-
+set Luminosity:BeamEMaxA 30.*GeV
+set EventHandler:BeamB /Herwig/Particles/p+
+set Luminosity:BeamEMaxB 920.*GeV
+
+## Set the order of the couplings
+cd /Herwig/MatrixElements/Matchbox
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+
+## Select the process
+## You may use identifiers such as p, pbar, j, l, mu+, h0 etc.
+do Factory:Process e- p -> e- j
+
+## Special settings required for on-shell production of unstable particles
+## enable for on-shell top production
+# read Matchbox/OnShellTopProduction.in
+## enable for on-shell W, Z or h production
+# read Matchbox/OnShellWProduction.in
+# read Matchbox/OnShellZProduction.in
+# read Matchbox/OnShellHProduction.in
+
+##################################################
+## Matrix element library selection
+##################################################
+
+## Select a generic tree/loop combination or a
+## specialized NLO package
+
+# read Matchbox/MadGraph-GoSam.in
+# read Matchbox/MadGraph-MadGraph.in
+# read Matchbox/MadGraph-NJet.in
+# read Matchbox/MadGraph-OpenLoops.in
+
+##################################################
+## Cut selection
+## See the documentation for more options
+##################################################
+
+## cuts on additional jets
+
+# read Matchbox/DefaultEPJets.in
+
+# insert JetCuts:JetRegions 0 FirstJet
+# insert JetCuts:JetRegions 1 SecondJet
+# insert JetCuts:JetRegions 2 ThirdJet
+
+##################################################
+## Scale choice
+## See the documentation for more options
+##################################################
 
 cd /Herwig/MatrixElements/Matchbox
+set Factory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/LeptonQ2Scale
 
-insert /Herwig/Generators/DISGenerator:EventHandler:SubProcessHandlers[0] DISFactory
+##################################################
+## Matching and shower selection
+## Please also see flavour scheme settings
+## towards the end of the input file.
+##################################################
 
-################################################################################
-# 1+1 jets
-################################################################################
+read Matchbox/MCatNLO-DefaultShower.in
+# read Matchbox/Powheg-DefaultShower.in
+## use for strict LO/NLO comparisons
+# read Matchbox/MCatLO-DefaultShower.in
+## use for improved LO showering
+# read Matchbox/LO-DefaultShower.in
 
-set DISFactory:OrderInAlphaS 0
-do DISFactory:Process e+ p e+ j 
+# read Matchbox/MCatNLO-DipoleShower.in
+# read Matchbox/Powheg-DipoleShower.in
+## use for strict LO/NLO comparisons
+# read Matchbox/MCatLO-DipoleShower.in
+## use for improved LO showering
+# read Matchbox/LO-DipoleShower.in
 
-################################################################################
-# 2+1 jets
-################################################################################
+# read Matchbox/NLO-NoShower.in
+# read Matchbox/LO-NoShower.in
 
-# set DISFactory:OrderInAlphaS 1
-# do DISFactory:Process e+ p e+ j j
+##################################################
+## Scale uncertainties
+##################################################
 
-# set DISFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/MaxPtScale
+# read Matchbox/MuDown.in
+# read Matchbox/MuUp.in
 
-# set /Herwig/Cuts/JetFinder:Variant SphericalKt
-# set /Herwig/Cuts/JetFinder:RecombinationScheme E
-# set /Herwig/Cuts/JetFinder:Mode Inclusive
-# set /Herwig/Cuts/JetFinder:ConeRadius 0.7
+##################################################
+## Shower scale uncertainties
+##################################################
 
-# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
-# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/SecondJet
+# read Matchbox/MuQDown.in
+# read Matchbox/MuQUp.in
 
-# set /Herwig/Cuts/DISCuts:JetFinder /Herwig/Cuts/JetFinder
-# insert /Herwig/Cuts/DISCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
+##################################################
+## PDF choice
+##################################################
 
-################################################################################
-# 3+1 jets (leading order only)
-################################################################################
+read Matchbox/FiveFlavourScheme.in
+## required for dipole shower and fixed order in five flavour scheme
+# read Matchbox/FiveFlavourNoBMassScheme.in
+read Matchbox/MMHT2014.in
 
-# set DISFactory:OrderInAlphaS 2
-# do DISFactory:Process e+ p e+ j j j
+##################################################
+## Analyses
+##################################################
 
-# set DISFactory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/MaxPtScale
+# cd /Herwig/Analysis
+# insert Rivet:Analyses 0 XXX_2015_ABC123
+# insert /Herwig/Generators/EventGenerator:AnalysisHandlers 0 Rivet
+# insert /Herwig/Generators/EventGenerator:AnalysisHandlers 0 HepMC
 
-# set /Herwig/Cuts/JetFinder:Variant SphericalKt
-# set /Herwig/Cuts/JetFinder:RecombinationScheme E
-# set /Herwig/Cuts/JetFinder:Mode Inclusive
-# set /Herwig/Cuts/JetFinder:ConeRadius 0.7
+##################################################
+## Save the generator
+##################################################
 
-# insert /Herwig/Cuts/JetCuts:JetRegions 0 /Herwig/Cuts/FirstJet
-# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/SecondJet
-# insert /Herwig/Cuts/JetCuts:JetRegions 1 /Herwig/Cuts/ThirdJet
-
-# set /Herwig/Cuts/DISCuts:JetFinder /Herwig/Cuts/JetFinder
-# insert /Herwig/Cuts/DISCuts:MultiCuts 0 /Herwig/Cuts/JetCuts
-
-################################################################################
-# leading order
-################################################################################
-
-# set DISFactory:VirtualContributions Off
-# set DISFactory:RealContributions Off
-
-################################################################################
-# MC@NLO-type next-to-leading order
-################################################################################
-
-set DISFactory:ShowerApproximation DipoleMatching
-
-################################################################################
-# POWHEG-type next-to-leading order
-################################################################################
-
-# set DISFactory:ShowerApproximation MEMatching
-# set MECorrectionHandler:Factory DISFactory
-# insert /Herwig/Generators/DISGenerator:EventHandler:PostSubProcessHandlers[0] MECorrectionHandler
-
-################################################################################
-# scale variations
-#
-# see Matchbox.in for different scale choices
-#
-################################################################################
-
-################################################################################
-# hard process scale variations
-################################################################################
-
-set DISFactory:RenormalizationScaleFactor 1.0
-set DISFactory:FactorizationScaleFactor 1.0
-
-################################################################################
-# matching scale variations 
-#  - HardScaleFactor has to equal the one for the shower!
-################################################################################
-
-set DipoleMatching:RenormalizationScaleFactor 1.0
-set DipoleMatching:FactorizationScaleFactor 1.0
-set DipoleMatching:HardScaleFactor 1.0
-
-set MEMatching:RenormalizationScaleFactor 1.0
-set MEMatching:FactorizationScaleFactor 1.0
-set MEMatching:ScreeningScale 10.0*GeV
-
-################################################################################
-# shower scale variations
-################################################################################
-
-set /Herwig/DipoleShower/DipoleShowerHandler:RenormalizationScaleFactor 1.0
-set /Herwig/DipoleShower/DipoleShowerHandler:FactorizationScaleFactor 1.0
-set /Herwig/DipoleShower/DipoleShowerHandler:HardScaleFactor 1.0
-
-################################################################################
-# setup generator and analysis
-#
-#
-#
-################################################################################
+do /Herwig/MatrixElements/Matchbox/Factory:ProductionMode
 
 cd /Herwig/Generators
-
-set DISGenerator:EventHandler:CascadeHandler /Herwig/DipoleShower/DipoleShowerHandler
-set DISGenerator:EventHandler:CascadeHandler:MPIHandler NULL
-
-set DISGenerator:NumberOfEvents 100000000
-set DISGenerator:RandomNumberGenerator:Seed 31122001
-set DISGenerator:DebugLevel 1
-set DISGenerator:PrintEvent 10
-set DISGenerator:MaxErrors 1000000
-
-cd /Herwig/Generators
-
-#insert DISGenerator:AnalysisHandlers 0 /Herwig/Analysis/HepMCFile
-set /Herwig/Analysis/HepMCFile:PrintEvent 2000000
-set /Herwig/Analysis/HepMCFile:Format GenEvent
-set /Herwig/Analysis/HepMCFile:Units GeV_mm
-set /Herwig/Analysis/HepMCFile:Filename events.fifo
-
-saverun DIS DISGenerator
+saverun DIS-Matchbox EventGenerator

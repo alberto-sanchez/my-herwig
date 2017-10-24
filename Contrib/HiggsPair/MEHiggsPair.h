@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEHiggsPair.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2009-2011 The Herwig Collaboration
+// MEHiggsPair.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2009-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MEHiggsPair_H
@@ -11,13 +11,13 @@
 //
 // This is the declaration of the MEHiggsPair class.
 //
-// The implementation of this process is based upon hep-ph/0112161 by G.F. Giudice, R. Rattazzi, J.D. Wells.
 
-#include "Herwig++/MatrixElement/HwMEBase.h"
+
+#include "Herwig/MatrixElement/HwMEBase.h"
 #include "ThePEG/Repository/UseRandom.h"
-#include "Herwig++/PDT/GenericMassGenerator.h"
-#include "Herwig++/Utilities/Kinematics.h"
-#include "Herwig++/MatrixElement/ProductionMatrixElement.h"
+#include "Herwig/PDT/GenericMassGenerator.h"
+#include "Herwig/Utilities/Kinematics.h"
+#include "Herwig/MatrixElement/ProductionMatrixElement.h"
 
 
 namespace Herwig {
@@ -106,6 +106,22 @@ public:
    */
   virtual CrossSection dSigHatDR() const;
 
+  /*
+   * Fix alphaS
+   */ 
+  unsigned int fixedalphaS() const { return _fixedalphaS; }
+
+  /*
+   * Fixed alphaS value if AlphaS is chosen (option 2 above)
+   */ 
+  double alphasfixedvalue() const { return _alphasfixedvalue; }
+
+  /**
+   *  Return multiplier for scale
+   */
+  double scalemultiplier() const {return _scalemultiplier;}
+
+  
   
 
   /**
@@ -261,6 +277,12 @@ private:
   PDPtr _higgs;
 
   /* 
+   * The W mass
+   */
+  Energy _Wmass;
+
+
+  /* 
    * The top mass
    */
   Energy _topmass;
@@ -293,7 +315,25 @@ private:
    */
   Energy _heavyHwidth;
 
+  /*					       
+   * top yukawa multiplier, Heavy
+   */
+  double _yH;
 
+   /*					       
+   * top yukawa multiplier, light
+   */
+  double _yh;
+
+   /*					       
+   * bottom yukawa multiplier, Heavy
+   */
+  double _ybH;
+
+   /*					       
+   * bottom yukawa multiplier, light
+   */
+  double _ybh;
 
 private:
 
@@ -307,17 +347,47 @@ private:
    */
   double _selfcoupling;
 
-
   /**
    *  multiplier for the hhH triple-coupling
    */
   double _hhHcoupling;
 
-
   /**
    *  Processes to include
    */
   unsigned int _process;
+
+  /*
+   * Fix alphaS
+   */ 
+  unsigned int _fixedalphaS;
+
+    /*
+   * Scale to use for alpha_S if fixed
+   */
+  Energy _alphascale;
+
+
+  /*
+   * Value of AlphaS if fixed using option 2 above
+   */ 
+  double _alphasfixedvalue;
+
+   /* 
+   * Base scale to use if chosen to be fixed
+   */ 
+  Energy _basescale;
+
+  /* 
+   * scale multiplier 
+   */ 
+  double _scalemultiplier;
+
+  /*
+   * Fix scale of whole process
+   */ 
+  unsigned int _fixedscale;
+  
 
  /**
    *  On-shell mass for the higgs
@@ -329,6 +399,59 @@ private:
    *  On-shell width for the higgs
    */
   Energy _wh; 
+
+ /**
+   *  On-shell mass for the W 
+   */
+  Energy _mW;
+
+
+  
+  /* 
+   * _cH, effective theory coefficient
+   */ 
+  double _cH;
+  
+  /* _c6, effective theory coefficient
+   *
+   */
+  double _c6;
+
+ /* 
+   * _cg1, effective theory coefficient
+   */ 
+  double _cg1;
+  
+  /* _cg2, effective theory coefficient
+   *
+   */
+  double _cg2;
+  
+ /* 
+   * _ct1, effective theory coefficient
+   */ 
+  double _ct1;
+
+ /* 
+   * _ct2, effective theory coefficient
+   */ 
+  double _ct2;
+
+  
+  /* _ct2, effective theory coefficient
+   *
+   */
+  double _cb1;
+
+  /* f_b2, effective theory coefficient
+   *
+   */
+  double _cb2;
+
+  /*  effective theory scale
+   *
+   */
+  Energy _EFTScale;
 
   /* Scalar integral initialization from hpair.f (T.Plehn, M.Spira & P.Zerwas, arXiv:hep-ph/9603205)
      Program found at http://people.web.psi.ch/spira/hpair/ */
@@ -373,7 +496,7 @@ struct ClassTraits<Herwig::MEHiggsPair>
    * excepted). In this case the listed libraries will be dynamically
    * linked in the order they are specified.
    */
-  static string library() { return "HwHiggsPair.so"; }
+  static string library() { return "MEHiggsPair.so"; }
 };
 
 /** @endcond */

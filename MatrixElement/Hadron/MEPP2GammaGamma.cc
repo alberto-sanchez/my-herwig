@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEPP2GammaGamma.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// MEPP2GammaGamma.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -16,9 +16,9 @@
 #include "ThePEG/Interface/Switch.h"
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Repository/EventGenerator.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 #include "ThePEG/Handlers/StandardXComb.h"
-#include "Herwig++/MatrixElement/HardVertex.h"
+#include "Herwig/MatrixElement/HardVertex.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/PDT/EnumParticles.h"
@@ -49,7 +49,7 @@ void MEPP2GammaGamma::doinit() {
   if(hwsm)
     {_photonvertex = hwsm->vertexFFP();}
   else throw InitException() << "Wrong type of StandardModel object in "
-			     << "MEPP2GammaGamma::doinit() the Herwig++"
+			     << "MEPP2GammaGamma::doinit() the Herwig"
 			     << " version must be used" 
 			     << Exception::runerror;
   // call the base class
@@ -77,7 +77,7 @@ void MEPP2GammaGamma::getDiagrams() const {
 
 Energy2 MEPP2GammaGamma::scale() const {
   Energy2 s(sHat()),u(uHat()),t(tHat());
-  return 2.*s*t*u/(s*s+t*t+u*u);
+  return scalePreFactor_*2.*s*t*u/(s*s+t*t+u*u);
 }
 
 Selector<MEBase::DiagramIndex>
@@ -104,11 +104,11 @@ MEPP2GammaGamma::colourGeometries(tcDiagPtr diag) const {
 }
 
 void MEPP2GammaGamma::persistentOutput(PersistentOStream & os) const {
-  os << _photonvertex << _maxflavour << _process;
+  os << _photonvertex << _maxflavour << _process << scalePreFactor_;
 }
 
 void MEPP2GammaGamma::persistentInput(PersistentIStream & is, int) {
-  is >> _photonvertex >> _maxflavour >> _process;
+  is >> _photonvertex >> _maxflavour >> _process >> scalePreFactor_;
 }
 
 ClassDescription<MEPP2GammaGamma> MEPP2GammaGamma::initMEPP2GammaGamma;
@@ -145,6 +145,12 @@ void MEPP2GammaGamma::Init() {
      "gg",
      "Only include the incoming gg subprocess",
      2);
+
+  static Parameter<MEPP2GammaGamma,double> interfaceScalePreFactor
+    ("ScalePreFactor",
+     "Prefactor for the scale",
+     &MEPP2GammaGamma::scalePreFactor_, 1.0, 0.0, 10.0,
+     false, false, Interface::limited);
 
 }
 

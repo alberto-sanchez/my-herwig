@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TensorMeson2PScalarDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// TensorMeson2PScalarDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -19,6 +19,7 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/PDT/DecayMode.h"
+#include "Herwig/Decay/TwoBodyDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -34,7 +35,6 @@ void TensorMeson2PScalarDecayer::doinitrun() {
 TensorMeson2PScalarDecayer::TensorMeson2PScalarDecayer() 
   : _incoming(48), _outgoing1(48), _outgoing2(48), 
     _coupling(48), _maxweight(48) {
-  ME(DecayMatrixElement(PDT::Spin2,PDT::Spin0,PDT::Spin0));
   // a_2 -> eta pi
   _incoming[0] = 115; _outgoing1[0] =  221; _outgoing2[0] = 111; 
   _coupling[0] = 10.90/GeV; _maxweight[0] = 1.7; 
@@ -268,6 +268,8 @@ void TensorMeson2PScalarDecayer::Init() {
 double TensorMeson2PScalarDecayer::me2(const int, const Particle & inpart,
 				       const ParticleVector & decay,
 				       MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(TwoBodyDecayMatrixElement(PDT::Spin2,PDT::Spin0,PDT::Spin0)));
   // stuff for incoming particle
   if(meopt==Initialize) {
     _rho = RhoDMatrix(PDT::Spin2);
@@ -285,7 +287,7 @@ double TensorMeson2PScalarDecayer::me2(const int, const Particle & inpart,
   }
   // calculate the matrix element
   for(unsigned int ix=0;ix<5;++ix) {
-    ME()(ix,0,0) = _coupling[imode()]/inpart.mass()*
+    (*ME())(ix,0,0) = _coupling[imode()]/inpart.mass()*
       ((_tensors[ix]*decay[1]->momentum())*decay[0]->momentum());
   }
 //   // test of the answer
@@ -297,7 +299,7 @@ double TensorMeson2PScalarDecayer::me2(const int, const Particle & inpart,
 //        << decay[0]->PDGName() << " " << decay[1]->PDGName() << " " 
 //        << me << " " << test << " " << (me-test)/(me+test) << endl;
   // return the answer
-  return ME().contract(_rho).real();
+  return ME()->contract(_rho).real();
 }
 
 bool TensorMeson2PScalarDecayer::twoBodyMEcode(const DecayMode & dm,int & mecode,

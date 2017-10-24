@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// a1ThreePionDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// a1ThreePionDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -21,7 +21,8 @@
 #include "ThePEG/PDT/DecayMode.h"
 #include "ThePEG/Helicity/WaveFunction/ScalarWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/VectorWaveFunction.h"
-#include "Herwig++/PDT/ThreeBodyAllOnCalculator.h"
+#include "Herwig/PDT/ThreeBodyAllOnCalculator.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -492,11 +493,12 @@ double a1ThreePionDecayer::me2(const int ichan,
 			       const ParticleVector & decay,
 			       MEOption meopt) const {
   useMe();
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin1,PDT::Spin0,PDT::Spin0,PDT::Spin0)));
   if(meopt==Initialize) {
     VectorWaveFunction::calculateWaveFunctions(_vectors,_rho,
 						const_ptr_cast<tPPtr>(&inpart),
 						incoming,false);
-    ME(DecayMatrixElement(PDT::Spin1,PDT::Spin0,PDT::Spin0,PDT::Spin0));
   }
   if(meopt==Terminate) {
     VectorWaveFunction::constructSpinInfo(_vectors,const_ptr_cast<tPPtr>(&inpart),
@@ -609,9 +611,9 @@ double a1ThreePionDecayer::me2(const int ichan,
     = output * a1FormFactor(Q.mass2())*_coupling/(Q.mass()*sqr(_rhomass[0]));
   // compute the matrix element
   for(unsigned int ix=0;ix<3;++ix)
-    ME()(ix,0,0,0)=outputFinal.dot(_vectors[ix]);
+    (*ME())(ix,0,0,0)=outputFinal.dot(_vectors[ix]);
   // return the answer
-  double out = ME().contract(_rho).real();
+  double out = ME()->contract(_rho).real();
   // test of the answer
 //   double test = threeBodyMatrixElement(imode(),sqr(inpart.mass()),s3,s2,s1,
 // 				       decay[0]->mass(),decay[1]->mass(), 

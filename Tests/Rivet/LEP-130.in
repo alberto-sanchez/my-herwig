@@ -1,23 +1,38 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at the Z pole
+# base parameters for LEP analyses
 ##################################################
-read LEPBase.in
-
+read snippets/EECollider.in
 ##################################################
-# LEP physics parameters (override defaults) 
-##################################################
-cd /Herwig/Generators
-set LEPGenerator:EventHandler:LuminosityFunction:Energy 130.
-
-##################################################
-# select the analyses
-##################################################
-
-# OPAL b/c/light multiplicity
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 OPAL_2002_S5361494
-
-##################################################
-# Save run for later usage with 'Herwig++ run'
+# Technical parameters for this run
 ##################################################
 cd /Herwig/Generators
-saverun LEP-130 LEPGenerator
+set EventGenerator:MaxErrors 1000000
+
+##################################################
+#  Switch off ISR
+##################################################
+set /Herwig/Particles/e-:PDF /Herwig/Partons/NoPDF
+set /Herwig/Particles/e+:PDF /Herwig/Partons/NoPDF
+
+##################################################
+#  Create the Herwig analysis
+##################################################
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+##################################################
+#  Use the q qbar matrix element
+##################################################
+# default e+e- > q qbar (5 flavours d,u,s,c,b)
+insert  /Herwig/MatrixElements/SubProcess:MatrixElements 0 /Herwig/MatrixElements/MEee2gZ2qq
+
+set /Herwig/Shower/PartnerFinder:QEDPartner IIandFF
+
+read LEP/LEP-130.in
+
+##################################################
+# Save run for later usage with 'Herwig run'
+##################################################
+cd /Herwig/Generators
+saverun LEP-130 EventGenerator

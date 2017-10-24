@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ShowerApproximation.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ShowerApproximation.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_ShowerApproximation_H
@@ -14,7 +14,11 @@
 
 #include "ThePEG/Handlers/HandlerBase.h"
 #include "ThePEG/Handlers/StandardXComb.h"
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
+#include "Herwig/MatrixElement/Matchbox/Utility/ColourBasis.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/TildeKinematics.fh"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/InvertedTildeKinematics.fh"
+#include "HardScaleProfile.h"
 
 namespace Herwig {
 
@@ -54,10 +58,36 @@ public:
   virtual bool needsSplittingGenerator() const { return false; }
 
   /**
+   * Return true, if this shower approximation will require
+   * H events
+   */
+  virtual bool hasHEvents() const { return true; }
+
+  /**
    * Return true, if this shower approximation will require tilde
    * XCombs for the real phase space point generated
    */
   virtual bool needsTildeXCombs() const { return false; }
+
+  /**
+   * Return true, if this shower approximation will require 
+   * a truncated parton shower
+   */
+  virtual bool needsTruncatedShower() const { return false; }
+
+  /**
+   * Return the tilde kinematics object returning the shower
+   * kinematics parametrization if different from the nominal dipole
+   * mappings.
+   */
+  virtual Ptr<TildeKinematics>::tptr showerTildeKinematics() const;
+
+  /**
+   * Return the tilde kinematics object returning the shower
+   * kinematics parametrization if different from the nominal dipole
+   * mappings.
+   */
+  virtual Ptr<InvertedTildeKinematics>::tptr showerInvertedTildeKinematics() const;
 
 public:
 
@@ -104,12 +134,17 @@ public:
   /**
    * Set the dipole in charge for the emission
    */
-  void setDipole(Ptr<SubtractionDipole>::tcptr);
+  void setDipole(Ptr<SubtractionDipole>::tptr);
 
   /**
    * Return the dipole in charge for the emission
    */
-  Ptr<SubtractionDipole>::tcptr dipole() const;
+  Ptr<SubtractionDipole>::tptr dipole() const;
+
+  /**
+   * Return true, if this matching is capable of spin correlations.
+   */
+  virtual bool hasSpinCorrelations() const { return false; }
 
 public:
 
@@ -144,6 +179,11 @@ public:
    * Return the pt cut to be applied for initial-initial dipoles.
    */
   Energy iiPtCut() const { return theIIPtCut; }
+
+  /**
+   * Return the pt cut to be applied for initial-initial dipoles.
+   */
+  Energy safeCut() const { return theSafeCut;}
 
   /**
    * Return the screening scale to be applied for final-final dipoles.
@@ -283,9 +323,30 @@ public:
   bool restrictPhasespace() const { return theRestrictPhasespace; }
 
   /**
-   * Return true if we are to use profile scales
+   * Indicate that the phase space restrictions of the dipole shower should
+   * be applied.
    */
-  bool profileScales() const { return theProfileScales; }
+  void restrictPhasespace(bool yes) { theRestrictPhasespace = yes; }
+
+  /**
+   * Return profile scales
+   */
+  Ptr<HardScaleProfile>::tptr profileScales() const { return theHardScaleProfile; }
+
+  /**
+   * Set profile scales
+   */
+  void profileScales(Ptr<HardScaleProfile>::ptr prof) { theHardScaleProfile = prof; }
+
+  /**
+   * Return true if maximum pt should be deduced from the factorization scale
+   */
+  bool hardScaleIsMuF() const { return maxPtIsMuF; }
+
+  /**
+   * Indicate that maximum pt should be deduced from the factorization scale
+   */
+  void hardScaleIsMuF(bool yes) { maxPtIsMuF = yes; }
 
   /**
    * Return the scale factor for the hard scale
@@ -293,14 +354,9 @@ public:
   double hardScaleFactor() const { return theHardScaleFactor; }
 
   /**
-   * Return the relevant hard scale
+   * Set the scale factor for the hard scale
    */
-  virtual Energy hardScale() const;
-
-  /**
-   * Return a scale profile towards the hard scale
-   */
-  virtual double hardScaleProfile(Energy hard, Energy soft) const;
+  void hardScaleFactor(double f) { theHardScaleFactor = f; }
 
   /**
    * Get the factorization scale factor
@@ -323,17 +379,16 @@ public:
   void renormalizationScaleFactor(double f) { theRenormalizationScaleFactor = f; }
 
   /**
-   * Return true, if the shower was able to generate an emission
-   * leading from the given Born to the given real emission process.
+   * Determine if the configuration is below or above the cutoff.
    */
-  virtual bool isInShowerPhasespace() const;
+  virtual void checkCutoff();
 
   /**
-   * Return true, if the shower emission leading from the given Born
-   * to the given real emission process would have been generated
-   * above the shower's infrared cutoff.
+   * Determine all kinematic variables which are not provided by the
+   * dipole kinematics; store all shower variables in the respective
+   * dipole object for later use.
    */
-  virtual bool isAboveCutoff() const;
+  virtual void getShowerVariables();
 
   /**
    * Return the shower approximation to the real emission cross
@@ -359,6 +414,39 @@ public:
    * Return the real emission PDF weight
    */
   double realPDFWeight(Energy2 muF) const;
+
+protected:
+
+  /**
+   * Return true, if the shower was able to generate an emission
+   * leading from the given Born to the given real emission process.
+   */
+  virtual bool isInShowerPhasespace() const;
+
+  /**
+   * Return true, if the shower emission leading from the given Born
+   * to the given real emission process would have been generated
+   * above the shower's infrared cutoff.
+   */
+  virtual bool isAboveCutoff() const;
+
+  /**
+   * Return the relevant hard scale
+   */
+  virtual Energy hardScale() const;
+
+public:
+
+  /**
+   * Generate a weight for the given dipole channel
+   */
+  virtual double channelWeight(int emitter, int emission, 
+			       int spectator, int bemitter) const;
+
+  /**
+   * Generate a normalized weight taking into account all channels
+   */
+  virtual double channelWeight() const;
 
 public:
 
@@ -387,8 +475,47 @@ public:
   static void Init();
 
 
+protected:
+
+  /** @name Standard Interfaced functions. */
+  //@{
+  /**
+   * Initialize this object after the setup phase before saving an
+   * EventGenerator to disk.
+   * @throws InitException if object could not be initialized properly.
+   */
+  virtual void doinit();
+  //@}
+
+
 // If needed, insert declarations of virtual function defined in the
 // InterfacedBase class here (using ThePEG-interfaced-decl in Emacs).
+
+public:
+
+  /**
+   * A large-N colour basis to be used when reproducing the shower
+   * kernels.
+   */
+  Ptr<ColourBasis>::tptr largeNBasis() const { return theLargeNBasis; }
+
+protected:
+
+  /**
+   * A large-N colour basis to be used when reproducing the shower
+   * kernels.
+   */
+  Ptr<ColourBasis>::ptr theLargeNBasis;
+
+  /**
+   * Set the large-N basis
+   */
+  void setLargeNBasis();
+
+  /**
+   * The x value from which on we extrapolate PDFs for numerically stable ratios.
+   */
+  double theExtrapolationX;
 
 private:
 
@@ -410,7 +537,7 @@ private:
   /**
    * The dipole in charge for the emission
    */
-  Ptr<SubtractionDipole>::tcptr theDipole;
+  Ptr<SubtractionDipole>::tptr theDipole;
 
   /**
    * True if one of the recently encountered configutations was below
@@ -452,6 +579,11 @@ private:
   Energy theIIScreeningScale;
 
   /**
+   * The cut to be applied as an enhanced shower cutoff.
+   */
+  Energy theSafeCut;
+
+  /**
    * True, if the phase space restrictions of the dipole shower should
    * be applied.
    */
@@ -471,11 +603,6 @@ private:
    * The scale factor for the factorization scale
    */
   double theFactorizationScaleFactor;
-
-  /**
-   * The x value from which on we extrapolate PDFs for numerically stable ratios.
-   */
-  double theExtrapolationX;
 
   /**
    * The scale choice in the real emission cross section to be
@@ -524,14 +651,14 @@ private:
   Energy theFactorizationScaleFreeze;
 
   /**
-   * True if we are to use profile scales
+   * True if maximum pt should be deduced from the factorization scale
    */
-  bool theProfileScales;
+  bool maxPtIsMuF;
 
   /**
-   * The profile scale parameter
+   * The profile scales
    */
-  double theProfileRho;
+  Ptr<HardScaleProfile>::ptr theHardScaleProfile;
 
 private:
 

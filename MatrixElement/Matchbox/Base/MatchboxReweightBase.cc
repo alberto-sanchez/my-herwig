@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxReweightBase.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxReweightBase.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -42,4 +42,4 @@ void MatchboxReweightBase::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeAbstractClass<MatchboxReweightBase,HandlerBase>
-describeMatchboxReweightBase("Herwig::MatchboxReweightBase", "HwMatchbox.so");
+describeMatchboxReweightBase("Herwig::MatchboxReweightBase", "Herwig.so");

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FlatInvertiblePhasespace.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FlatInvertiblePhasespace.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -18,7 +18,7 @@
 #include "ThePEG/Repository/UseRandom.h"
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
-#include "Herwig++/Utilities/GSLBisection.h"
+#include "Herwig/Utilities/GSLBisection.h"
 #include "ThePEG/Cuts/Cuts.h"
 
 #include "ThePEG/Persistency/PersistentOStream.h"
@@ -296,7 +296,7 @@ void FlatInvertiblePhasespace::persistentInput(PersistentIStream &, int) {}
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FlatInvertiblePhasespace,MatchboxPhasespace>
-  describeHerwigFlatInvertiblePhasespace("Herwig::FlatInvertiblePhasespace", "HwMatchbox.so");
+  describeHerwigFlatInvertiblePhasespace("Herwig::FlatInvertiblePhasespace", "Herwig.so");
 
 void FlatInvertiblePhasespace::Init() {
 

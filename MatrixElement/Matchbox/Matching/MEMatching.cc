@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEMatching.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MEMatching.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,17 +20,18 @@
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
 
+#include "ThePEG/Handlers/StdXCombGroup.h"
 #include "ThePEG/PDT/EnumParticles.h"
 
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
 
 using namespace Herwig;
 
 MEMatching::MEMatching()
-  : theScreeningScale(10*GeV) {}
+  : theTruncatedShower(false) {}
 
 MEMatching::~MEMatching() {}
 
@@ -42,39 +43,17 @@ IBPtr MEMatching::fullclone() const {
   return new_ptr(*this);
 }
 
-double MEMatching::channelWeight(int emitter, int emission, int spectator) const {
-  // do the most simple thing for the time being; needs fixing later
-  if ( realCXComb()->mePartonData()[emission]->id() == ParticleID::g ) {
-    Energy2 pipk = 
-      realCXComb()->meMomenta()[emitter] * realCXComb()->meMomenta()[spectator];
-    Energy2 pipj = 
-      realCXComb()->meMomenta()[emitter] * realCXComb()->meMomenta()[emission];
-    Energy2 pjpk = 
-      realCXComb()->meMomenta()[emission] * realCXComb()->meMomenta()[spectator];
-    return GeV2 * pipk / ( pipj * ( pipj + pjpk ) );
-  }
-  return
-    GeV2 / (realCXComb()->meMomenta()[emitter] * realCXComb()->meMomenta()[emission]);
-}
-
-double MEMatching::channelWeight() const {
-  double currentChannel = channelWeight(dipole()->realEmitter(),
-					dipole()->realEmission(),
-					dipole()->realSpectator());
-  if ( currentChannel == 0. )
-    return 0.;
-  double sum = 0.;
-  for ( vector<Ptr<SubtractionDipole>::ptr>::const_iterator dip =
-	  dipole()->partnerDipoles().begin();
-	dip != dipole()->partnerDipoles().end(); ++dip )
-    sum += channelWeight((**dip).realEmitter(),
-			 (**dip).realEmission(),
-			 (**dip).realSpectator());
-  assert(sum > 0.0);
-  return currentChannel / sum;
-}
-
 CrossSection MEMatching::dSigHatDR() const {
+
+  // need to ensure the partner dipoles all got their xcombs set
+  // for a safe evaluation of channelweight
+  Ptr<StdXCombGroup>::tcptr grp =
+    dynamic_ptr_cast<Ptr<StdXCombGroup>::tcptr>(realCXComb());
+  assert(grp);
+  for ( vector<StdXCombPtr>::const_iterator dep = grp->dependent().begin();
+	dep != grp->dependent().end(); ++dep ) {
+    (**dep).matrixElement()->setXComb(*dep);
+  }
 
   double xme2 = dipole()->realEmissionME()->me2();
 
@@ -89,13 +68,10 @@ CrossSection MEMatching::dSigHatDR() const {
   if ( bornPDF == 0.0 )
     return ZERO;
 
-  if ( theScreeningScale != ZERO ) {
-    xme2 *= sqr(theScreeningScale) /
-      ( sqr(dipole()->lastPt()) + sqr(theScreeningScale) );
-  }
+  xme2 *= bornPDF;
 
-  if ( restrictPhasespace() )
-    xme2 *= hardScaleProfile(hardScale(),dipole()->lastPt());
+  if ( profileScales() )
+    xme2 *= profileScales()->hardScaleProfile(dipole()->showerHardScale(),dipole()->lastPt());
 
   return
     sqr(hbarc) * 
@@ -119,15 +95,10 @@ double MEMatching::me2() const {
 	(double)(dipole()->realEmissionME()->orderInAlphaS()));
   rme2 *= 
     pow(bornXComb()->lastSHat()/realXComb()->lastSHat(),
-	2.*(realCXComb()->mePartonData().size())-8.);
+	realCXComb()->mePartonData().size()-4.);
 
-  if ( theScreeningScale != ZERO ) {
-    rme2 *= sqr(theScreeningScale) /
-      ( sqr(dipole()->lastPt()) + sqr(theScreeningScale) );
-  }
-
-  if ( restrictPhasespace() )
-    rme2 *= hardScaleProfile(hardScale(),dipole()->lastPt());
+  if ( profileScales() )
+    rme2 *= profileScales()->hardScaleProfile(dipole()->showerHardScale(),dipole()->lastPt());
 
   return
     channelWeight() * (rme2/bme2) * 
@@ -141,11 +112,11 @@ double MEMatching::me2() const {
 
 
 void MEMatching::persistentOutput(PersistentOStream & os) const {
-  os << ounit(theScreeningScale,GeV);
+  os << theTruncatedShower;
 }
 
 void MEMatching::persistentInput(PersistentIStream & is, int) {
-  is >> iunit(theScreeningScale,GeV);
+  is >> theTruncatedShower;
 }
 
 
@@ -155,18 +126,27 @@ void MEMatching::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MEMatching,Herwig::ShowerApproximation>
-  describeHerwigMEMatching("Herwig::MEMatching", "HwMatchbox.so");
+  describeHerwigMEMatching("Herwig::MEMatching", "Herwig.so");
 
 void MEMatching::Init() {
 
   static ClassDocumentation<MEMatching> documentation
     ("MEMatching implements NLO matching with matrix element correction (aka Powheg).");
 
-  static Parameter<MEMatching,Energy> interfaceScreeningScale
-    ("ScreeningScale",
-     "The screening scale to project out singular parts.",
-     &MEMatching::theScreeningScale, GeV, 10.0*GeV, 0.0*GeV, 0*GeV,
-     false, false, Interface::lowerlim);
+  static Switch<MEMatching,bool> interfaceTruncatedShower
+    ("TruncatedShower",
+     "Include a truncated qtilde shower",
+     &MEMatching::theTruncatedShower, false, false, false);
+  static SwitchOption interfaceTruncatedShowerYes
+    (interfaceTruncatedShower,
+     "Yes",
+     "",
+     true);
+  static SwitchOption interfaceTruncatedShowerNo
+    (interfaceTruncatedShower,
+     "No",
+     "",
+     false);
 
 }
 

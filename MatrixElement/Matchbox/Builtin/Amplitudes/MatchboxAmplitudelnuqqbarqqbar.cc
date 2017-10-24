@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudelnuqqbarqqbar.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudelnuqqbarqqbar.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -11,7 +11,7 @@
 // functions of the MatchboxAmplitudelnuqqbarqqbar class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxAmplitudelnuqqbarqqbar.h"
+#include "Herwig/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxAmplitudelnuqqbarqqbar.h"
 
 using namespace Herwig;
 
@@ -22,8 +22,8 @@ MatchboxAmplitudelnuqqbarqqbar::~MatchboxAmplitudelnuqqbarqqbar() {}
 
 void MatchboxAmplitudelnuqqbarqqbar::doinit() {
   MatchboxAmplitude::doinit();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   CA = SM().Nc();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   theCKM = standardCKM(SM())->getUnsquaredMatrix(6);
@@ -65,7 +65,7 @@ bool MatchboxAmplitudelnuqqbarqqbar::canHandle(const PDVector& proc) const {
   PDVector::iterator quark = xproc.begin();
   for ( ; quark != xproc.end(); ++quark ) 
     if ( abs((*quark)->id()) >= 1 && abs((*quark)->id()) <= 6 ) {
-      assert( (*quark)->mass() == ZERO );
+      assert( (*quark)->hardProcessMass() == ZERO );
       break;
     } 
   if ( quark == xproc.end() ) return false;
@@ -74,7 +74,7 @@ bool MatchboxAmplitudelnuqqbarqqbar::canHandle(const PDVector& proc) const {
   quark = xproc.begin();
   for ( ; quark != xproc.end(); ++quark ) 
     if ( abs((*quark)->id()) >= 1 && abs((*quark)->id()) <= 6 ) {
-      assert( (*quark)->mass() == ZERO );
+      assert( (*quark)->hardProcessMass() == ZERO );
       break;
     } 
   if ( quark == xproc.end() ) return false;
@@ -83,7 +83,7 @@ bool MatchboxAmplitudelnuqqbarqqbar::canHandle(const PDVector& proc) const {
   quark = xproc.begin();
   for ( ; quark != xproc.end(); ++quark ) 
     if ( abs((*quark)->id()) >= 1 && abs((*quark)->id()) <= 6 ) {
-      assert( (*quark)->mass() == ZERO );
+      assert( (*quark)->hardProcessMass() == ZERO );
       break;
     } 
   if ( quark == xproc.end() ) return false;
@@ -92,7 +92,7 @@ bool MatchboxAmplitudelnuqqbarqqbar::canHandle(const PDVector& proc) const {
   quark = xproc.begin();
   for ( ; quark != xproc.end(); ++quark ) 
     if ( abs((*quark)->id()) >= 1 && abs((*quark)->id()) <= 6 ) {
-      assert( (*quark)->mass() == ZERO );
+      assert( (*quark)->hardProcessMass() == ZERO );
       break;
     } 
   if ( quark == xproc.end() ) return false;
@@ -160,11 +160,11 @@ Complex MatchboxAmplitudelnuqqbarqqbar::evaluate(size_t a, const vector<int>& he
       amplitudePartonData()[1]->id() < 0:
       amplitudePartonData()[0]->id() < 0;
     pair<int,int> tmp23(
-      SU2Helper::family(amplitudePartonData()[2]),
-      SU2Helper::family(amplitudePartonData()[3]));
+      SU2Helper::family(amplitudePartonData()[2])-1,
+      SU2Helper::family(amplitudePartonData()[3])-1);
     pair<int,int> tmp45(
-      SU2Helper::family(amplitudePartonData()[4]),
-      SU2Helper::family(amplitudePartonData()[5]));
+      SU2Helper::family(amplitudePartonData()[4])-1,
+      SU2Helper::family(amplitudePartonData()[5])-1);
     if ( amplitudePartonData()[3]->id() < 0 ) swap(tmp23.first,tmp23.second);
     if ( amplitudePartonData()[5]->id() < 0 ) swap(tmp45.first,tmp45.second);
     ckmelement23 = theCKM[tmp23.first][tmp23.second];
@@ -177,9 +177,9 @@ Complex MatchboxAmplitudelnuqqbarqqbar::evaluate(size_t a, const vector<int>& he
   Complex wPropergator =
           1./Complex(((amplitudeMomentum(0)+amplitudeMomentum(1)).m2()-sqr(MW))/lastSHat(),MW*GW/lastSHat());
   Complex wVertices23 = 
-          2.*SM().alphaEM()*Constants::pi/SM().sin2ThetaW()*ckmelement23;
+          2.*SM().alphaEMMZ()*Constants::pi/SM().sin2ThetaW()*ckmelement23;
   Complex wVertices45 = 
-          2.*SM().alphaEM()*Constants::pi/SM().sin2ThetaW()*ckmelement45;
+          2.*SM().alphaEMMZ()*Constants::pi/SM().sin2ThetaW()*ckmelement45;
   Complex sVertices =
           4.*Constants::pi*SM().alphaS();
   Complex res2345 =
@@ -244,7 +244,7 @@ void MatchboxAmplitudelnuqqbarqqbar::persistentInput(PersistentIStream & is, int
 }
 
 DescribeClass<MatchboxAmplitudelnuqqbarqqbar,MatchboxAmplitude>
-  describeHerwigMatchboxAmplitudelnuqqbarqqbar("Herwig::MatchboxAmplitudelnuqqbarqqbar", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudelnuqqbarqqbar("Herwig::MatchboxAmplitudelnuqqbarqqbar", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudelnuqqbarqqbar::Init() {
   static ClassDocumentation<MatchboxAmplitudelnuqqbarqqbar> documentation

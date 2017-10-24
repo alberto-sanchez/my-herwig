@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxInsertionOperator.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxInsertionOperator.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MatchboxInsertionOperator_H
@@ -15,8 +15,10 @@
 #include "ThePEG/Handlers/HandlerBase.h"
 #include "ThePEG/Handlers/StandardXComb.h"
 #include "ThePEG/Handlers/LastXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
+#include "Herwig/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.fh"
+#include "Herwig/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
 
 namespace Herwig {
 
@@ -53,6 +55,16 @@ public:
 
 public:
 
+  /**
+   * Return the factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr factory() const;
+
+  /**
+   * Set the factory which produced this matrix element
+   */
+  void factory(Ptr<MatchboxFactory>::tptr f);
+
   /** @name Process and phasespace information */
   //@{
 
@@ -66,9 +78,7 @@ public:
    * Return the Born matrix element this class represents 
    * virtual corrections to.
    */
-  Ptr<MatchboxMEBase>::tptr lastBorn() const {
-    return lastMatchboxXComb()->matchboxME();
-  }
+  Ptr<MatchboxMEBase>::tptr lastBorn() const ;
 
   /**
    * Set the XComb object steering the Born matrix
@@ -78,6 +88,14 @@ public:
     theLastXComb = xc;
     lastMatchboxXComb(xc);
   }
+      
+      
+  /**
+   * Set parameters for new alpha parameter.
+   */
+  virtual void setAlpha(double )const {assert(false);}
+  
+    
 
   /**
    * Return the number of additional random variables
@@ -90,56 +108,33 @@ public:
   /** @name Conventions */
   //@{
 
-  /**
-   * Change from CDR to DR
-   */
-  virtual void useDR() { theUseDR = true; }
 
   /**
-   * Change from DR to CDR
+   * Return true, if the amplitude is DRbar renormalized, otherwise
+   * MSbar is assumed.
    */
-  virtual void useCDR() { theUseDR = false; }
-
-  /**
-   * Change to the CS conventions
-   */
-  virtual void useCS() { theUseCS = true; }
-
-  /**
-   * Change to the BDK conventions
-   */
-  virtual void useBDK() { theUseBDK = true; }
-
-  /**
-   * Change to the Expanded conventions
-   */
-  virtual void useExpanded() { theUseExpanded = true; }
-
+      virtual bool isDRbar() const;
   /**
    * Return true, if this virtual correction
    * has been calculated using dimensional reduction.
    * CDR is assumed otherwise.
    */
-  virtual bool isDR() const { return theUseDR; }
-
+      virtual bool isDR() const;
   /**
    * Return true, if the virtual correction has been calculated in the
    * dipole convention.
    */
-  virtual bool isCS() const { return theUseCS; }
-
+      virtual bool isCS() const;
   /**
    * Return true, if the virtual correction has been calculated in the
    * BDK convention.
    */
-  virtual bool isBDK() const { return theUseBDK; }
-
+      virtual bool isBDK() const;
   /**
    * Return true, if the virtual correction has been calculated in the
    * expanded convention.
    */
-  virtual bool isExpanded() const { return theUseExpanded; }
-
+      virtual bool isExpanded() const;
   /**
    * If defined, return the coefficient of the pole in epsilon^2
    */
@@ -168,6 +163,18 @@ public:
    * and possible additional random numbers.
    */
   virtual CrossSection dSigHatDR() const;
+      
+      
+  /**
+   * Evaluate the difference of dSigHatDR with and without alpha 
+   * parameter.
+   */
+  virtual CrossSection dSigHatDRAlphaDiff(double alpha) const{
+    setAlpha(alpha);
+    CrossSection res=dSigHatDR();
+    setAlpha(1.);
+    return res-dSigHatDR();
+  }
 
   //@}
 
@@ -228,29 +235,10 @@ public:
 private:
 
   /**
-   * True, if this virtual correction
-   * has been calculated using dimensional reduction.
-   * CDR is assumed otherwise.
+   * The factory which produced this matrix element
    */
-  bool theUseDR;
+  Ptr<MatchboxFactory>::tptr theFactory;
 
-  /**
-   * True, if the virtual correction has been calculated in the
-   * dipole convention.
-   */
-  bool theUseCS;
-
-  /**
-   * True, if the virtual correction has been calculated in the
-   * BDK convention.
-   */
-  bool theUseBDK;
-
-  /**
-   * True, if the virtual correction has been calculated in the
-   * expanded convention.
-   */
-  bool theUseExpanded;
 
 private:
 

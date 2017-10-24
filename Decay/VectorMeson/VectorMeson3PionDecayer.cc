@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// VectorMeson3PionDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// VectorMeson3PionDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -12,7 +12,7 @@
 //
 
 #include "VectorMeson3PionDecayer.h"
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Interface/ParVector.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
@@ -21,7 +21,8 @@
 #include "ThePEG/Helicity/epsilon.h"
 #include "ThePEG/Helicity/WaveFunction/ScalarWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/VectorWaveFunction.h"
-#include "Herwig++/PDT/ThreeBodyAllOnCalculator.h"
+#include "Herwig/PDT/ThreeBodyAllOnCalculator.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -56,7 +57,6 @@ VectorMeson3PionDecayer::VectorMeson3PionDecayer()
     _rho2mass(2), _rho3mass(2), _rho1width(2), _rho2width(2), 
     _rho3width(2), _defaultmass(2), _mpic(ZERO), _mpi0(ZERO) {
   // matrix element storage
-  ME(DecayMatrixElement(PDT::Spin1,PDT::Spin0,PDT::Spin0,PDT::Spin0));
   // omega decay
   _incoming[0] = 223;
   _coupling[0] = 178.71/GeV;
@@ -420,6 +420,8 @@ double VectorMeson3PionDecayer::me2(const int ichan,
 				    const Particle & inpart,
 				    const ParticleVector & decay,
 				    MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin1,PDT::Spin0,PDT::Spin0,PDT::Spin0)));
   useMe();
   if(meopt==Initialize) {
     VectorWaveFunction::calculateWaveFunctions(_vectors,_rho,
@@ -497,9 +499,9 @@ double VectorMeson3PionDecayer::me2(const int ichan,
 					  decay[2]->momentum());
   // compute the matrix element
   for(unsigned int ix=0;ix<3;++ix) 
-    ME()(ix,0,0,0)=scalar.dot(_vectors[ix]);
+    (*ME())(ix,0,0,0)=scalar.dot(_vectors[ix]);
   // return the answer
-  return ME().contract(_rho).real();
+  return ME()->contract(_rho).real();
 }
 
 double VectorMeson3PionDecayer::

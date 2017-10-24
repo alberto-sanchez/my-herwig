@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipoleIOperator.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipoleIOperator.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,7 +20,9 @@
 #include "ThePEG/Utilities/DescribeClass.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.h"
 
 using namespace Herwig;
 using Constants::pi;
@@ -42,28 +44,29 @@ IBPtr DipoleIOperator::fullclone() const {
   return new_ptr(*this);
 }
 
-void DipoleIOperator::setXComb(tStdXCombPtr xc) {
-  MatchboxInsertionOperator::setXComb(xc);
-  if ( CA < 0. ) {
-    CA = SM().Nc();
-    CF = (SM().Nc()*SM().Nc()-1.0)/(2.*SM().Nc());
-    gammaQuark = (3./2.)*CF;
-    gammaGluon = (11./6.)*CA - (1./3.)*lastBorn()->nLight();
-    betaZero = gammaGluon;
-    KQuark = (7./2.-sqr(pi)/6.)*CF;
-    KGluon = (67./18.-sqr(pi)/6.)*CA-(5./9.)*lastBorn()->nLight();
-    if ( isDR() ) {
-      gammaQuark -= CF/2.;
-      gammaGluon -= CA/6.;
-    }
-  }
-}
+//////////////////////////////////////////////////////////////////////
 
 bool DipoleIOperator::apply(const cPDVector& pd) const {
+
+  // DipoleIOperator should only apply if in the overall
+  // process only massless partons can occur.
+
+  // Prohibit splittings g->Q\bar{Q} in the final state.
+  // These are covered completely by DipoleMIOperator.
+  if ( NHeavyJetVec().size()!=0 ) {
+    return false;
+  }
+
   bool first = false;
   bool second = false;
   for ( cPDVector::const_iterator p = pd.begin();
 	p != pd.end(); ++p ) {
+    // Since this loop only checks for at least one exis-
+    // ting combination: Return false if any massive par-
+    // tons are present (covered by DipoleMIOperator).
+    if ( (*p)->coloured() && (*p)->hardProcessMass()!=ZERO ) {
+      return false;
+    }
     if ( !first ) {
       if ( apply(*p) )
 	first = true;
@@ -72,14 +75,153 @@ bool DipoleIOperator::apply(const cPDVector& pd) const {
 	second = true;
     }
   }
+
   return first && second;
+
 }
 
 bool DipoleIOperator::apply(tcPDPtr pd) const {
   return
-    pd->mass() == ZERO &&
-    (abs(pd->id()) < 6 || pd->id() == ParticleID::g);
+    pd->hardProcessMass() == ZERO &&
+    (abs(pd->id()) < 7 || pd->id() == ParticleID::g);
 }
+
+
+void DipoleIOperator::setAlpha(double alpha)const{
+  factory()->setAlphaParameter(alpha);
+  const double lga=log(alpha);
+  KQuark = (7./2.-sqr(pi)/6.)*CF;
+  KQuark +=-CF*sqr(lga)+gammaQuark*(alpha-1-lga);
+  KGluon = (67./18.-sqr(pi)/6.)*CA-(5./9.)*lastBorn()->nLightJetVec().size();
+  KGluon +=-CA*sqr(lga)+gammaGluon*(alpha-1-lga);
+}
+
+void DipoleIOperator::setXComb(tStdXCombPtr xc) {
+  MatchboxInsertionOperator::setXComb(xc);
+  if ( CA < 0. ) {
+    CA = SM().Nc();
+    CF = (SM().Nc()*SM().Nc()-1.0)/(2.*SM().Nc());
+    gammaQuark = (3./2.)*CF;
+      // gammaGluon = (11./6.)*CA - (1./3.)*NLightJetVec().size();
+    gammaGluon = (11./6.)*CA - (1./3.)*lastBorn()->nLightJetVec().size();
+    betaZero = gammaGluon;
+    double alpha = factory()->alphaParameter();
+    KQuark = (7./2.-sqr(pi)/6.)*CF;
+    KQuark +=-CF*sqr(log(alpha))+gammaQuark*(alpha-1-log(alpha));
+    
+    
+      // KGluon = (67./18.-sqr(pi)/6.)*CA-(5./9.)*NLightJetVec().size();
+    KGluon = (67./18.-sqr(pi)/6.)*CA-(5./9.)*lastBorn()->nLightJetVec().size();
+    KGluon +=-CA*sqr(log(alpha))+gammaGluon*(alpha-1-log(alpha));
+  
+  
+    if ( isDR() ) {
+      gammaQuark -= CF/2.;
+      gammaGluon -= CA/6.;
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////
+
+vector<int> DipoleIOperator::NLightJetVec() const {
+
+  // const map<string,PDVector>& theParticleGroups = MatchboxFactory::currentFactory()->particleGroups();
+  const map<string,PDVector>& theParticleGroups = factory()->particleGroups();
+  map<string,PDVector>::const_iterator theIt = theParticleGroups.find("j");
+  if ( theIt == theParticleGroups.end() )
+    throw Exception() << "DipoleIOperator::NLightJetVec(): Could not find a jet particle group named 'j'" << Exception::runerror;
+
+  const PDVector& theJetConstitutents = theIt->second;
+  vector<int> theNLightJetVec;
+
+  for ( PDVector::const_iterator theP = theJetConstitutents.begin();
+        theP != theJetConstitutents.end(); ++theP ) {
+    if ( (**theP).id() > 0 && (**theP).id() < 7 && (**theP).hardProcessMass() == ZERO )
+      theNLightJetVec.push_back( (**theP).id() );
+  }
+
+  return theNLightJetVec;
+
+}
+
+vector<int> DipoleIOperator::NHeavyJetVec() const {
+
+  // const map<string,PDVector>& theParticleGroups = MatchboxFactory::currentFactory()->particleGroups();
+  const map<string,PDVector>& theParticleGroups = factory()->particleGroups();
+  map<string,PDVector>::const_iterator theIt = theParticleGroups.find("j");
+  if ( theIt == theParticleGroups.end() )
+    throw Exception() << "DipoleIOperator::NHeavyJetVec(): Could not find a jet particle group named 'j'" << Exception::runerror;
+
+  const PDVector& theJetConstitutents = theIt->second;
+  vector<int> theNHeavyJetVec;
+
+  for ( PDVector::const_iterator theP = theJetConstitutents.begin();
+        theP != theJetConstitutents.end(); ++theP ) {
+    if ( (**theP).id() > 0 && (**theP).id() < 7 && (**theP).hardProcessMass() != ZERO )
+      theNHeavyJetVec.push_back( (**theP).id() );
+  }
+
+  return theNHeavyJetVec;
+
+}
+
+vector<int> DipoleIOperator::NLightBornVec() const {
+
+  // For the moment just count all quark and antiquark
+  // constituents in the Born process.
+
+  vector<int> theNLightBornVec;
+
+  for ( cPDVector::const_iterator j = mePartonData().begin();
+	j != mePartonData().end(); ++j ) {
+    if ( abs((**j).id()) < 7 && (**j).hardProcessMass() == ZERO )
+      theNLightBornVec.push_back( (**j).id() );
+  }
+
+  return theNLightBornVec;
+
+}
+
+vector<int> DipoleIOperator::NHeavyBornVec() const {
+
+  // For the moment just count all quark and antiquark
+  // constituents in the Born process.
+
+  vector<int> theNHeavyBornVec;
+
+  for ( cPDVector::const_iterator j = mePartonData().begin();
+	j != mePartonData().end(); ++j ) {
+    if ( abs((**j).id()) < 7 && (**j).hardProcessMass() != ZERO )
+      theNHeavyBornVec.push_back( (**j).id() );
+  }
+
+  return theNHeavyBornVec;
+
+}
+
+vector<int> DipoleIOperator::NLightProtonVec() const {
+
+  // const map<string,PDVector>& theParticleGroups = MatchboxFactory::currentFactory()->particleGroups();
+  const map<string,PDVector>& theParticleGroups = factory()->particleGroups();
+  map<string,PDVector>::const_iterator theIt = theParticleGroups.find("p");
+  if ( theIt == theParticleGroups.end() )
+    throw Exception() << "DipoleIOperator::NLightProtonVec(): Could not find a proton particle group named 'p'" << Exception::runerror;
+
+  const PDVector& theProtonConstitutents = theIt->second;
+  vector<int> theNLightProtonVec;
+
+  for ( PDVector::const_iterator theP = theProtonConstitutents.begin();
+        theP != theProtonConstitutents.end(); ++theP ) {
+    if ( (**theP).id() > 0 && (**theP).id() < 7 && (**theP).hardProcessMass() == ZERO )
+      theNLightProtonVec.push_back( (**theP).id() );
+  }
+
+  return theNLightProtonVec;
+
+}
+
+//////////////////////////////////////////////////////////////////////
 
 double DipoleIOperator::me2() const {
 
@@ -143,22 +285,29 @@ double DipoleIOperator::me2() const {
     }
   }
 
-  Energy2 muR2 = 
-    lastBorn()->renormalizationScale()*
-    sqr(lastBorn()->renormalizationScaleFactor());
-  if ( muR2 != mu2 ) {
-    res -=
-      betaZero *
-      lastBorn()->orderInAlphaS() * log(muR2/mu2) *
-      lastBorn()->me2();
+  // NOTE: In the following we account for the full scale restoration 
+  // if \mu of the OLP differs from \mu_R.
+  // Note: In the GoSam OLP interface, it is possible to directly set 
+  // \mu = \mu_R, via the switch SetMuToMuR (for debugging purposes).
+  if ( !lastBorn()->hasRunningAlphaS() ) {
+    Energy2 muR2 = 
+      lastBorn()->renormalizationScale()*
+      sqr(lastBorn()->renormalizationScaleFactor());
+    if ( muR2 != mu2 ) {
+      res -=
+	betaZero *
+	lastBorn()->orderInAlphaS() * log(muR2/mu2) *
+	lastBorn()->me2();
+    }
   }
 
   // include the finite renormalization for DR here; ATTENTION this
   // has to be mentioned in the manual!  see hep-ph/9305239 for
   // details; this guarantees an expansion in alpha_s^\bar{MS} when
   // using dimensional reduction
-  if ( isDR() )
+  if ( isDR() && isDRbar() ) {
     res -= (CA/6.)*lastBorn()->orderInAlphaS()*lastBorn()->me2();
+  }
 
   res *= ( - lastBorn()->lastAlphaS() / (2.*pi) );
 
@@ -241,6 +390,8 @@ double DipoleIOperator::oneLoopSinglePole() const {
 
 }
 
+//////////////////////////////////////////////////////////////////////
+
 void DipoleIOperator::persistentOutput(PersistentOStream & os) const {
   os << CA << CF << gammaQuark << gammaGluon << betaZero
      << KQuark << KGluon;
@@ -257,14 +408,14 @@ void DipoleIOperator::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<DipoleIOperator,MatchboxInsertionOperator>
-describeHerwigDipoleIOperator("Herwig::DipoleIOperator", "HwMatchbox.so");
+describeHerwigDipoleIOperator("Herwig::DipoleIOperator", "Herwig.so");
 
 void DipoleIOperator::Init() {
 
   static ClassDocumentation<DipoleIOperator> documentation
     ("DipoleIOperator");
 
-  DipoleRepository::registerInsertionOperator<0,DipoleIOperator>("LightIOperator");
+  DipoleRepository::registerInsertionIOperator<0,DipoleIOperator>("LightIOperator");
 
 }
 

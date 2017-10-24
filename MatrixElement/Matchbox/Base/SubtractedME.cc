@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SubtractedME.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// SubtractedME.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -13,10 +13,6 @@
 
 #include "SubtractedME.h"
 #include "ThePEG/Interface/ClassDocumentation.h"
-#include "ThePEG/Interface/Reference.h"
-#include "ThePEG/Interface/RefVector.h"
-#include "ThePEG/Interface/Switch.h"
-#include "ThePEG/Interface/Parameter.h"
 #include "ThePEG/Utilities/DescribeClass.h"
 #include "ThePEG/Repository/Repository.h"
 #include "ThePEG/Repository/EventGenerator.h"
@@ -26,17 +22,17 @@
 #include "ThePEG/Utilities/Throw.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxXCombGroup.h"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxXCombGroup.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.h"
 
 using namespace Herwig;
 
 SubtractedME::SubtractedME() 
   : MEGroup(), 
     theRealShowerSubtraction(false), theVirtualShowerSubtraction(false),
-    theSubProcessGroups(false), theInclusive(false) {}
+    theLoopSimSubtraction(false) {}
 
 SubtractedME::~SubtractedME() {}
 
@@ -46,11 +42,9 @@ void SubtractedME::factory(Ptr<MatchboxFactory>::tcptr f) { theFactory = f; }
 
 bool SubtractedME::subProcessGroups() const { 
   return 
-    (factory()->subProcessGroups() && !(showerApproximation() || inclusive())) ||
-    factory()->subtractionData() != "" || theSubProcessGroups;
+    (factory()->subProcessGroups() && !showerApproximation()) ||
+    factory()->subtractionData() != "";
 }
-
-bool SubtractedME::inclusive() const { return factory()->inclusive() || theInclusive; }
 
 Ptr<ShowerApproximation>::tptr SubtractedME::showerApproximation() const { return factory()->showerApproximation(); }
 
@@ -107,7 +101,13 @@ StdXCombPtr SubtractedME::makeXComb(Energy newMaxEnergy, const cPDPair & inc,
 	  continue;
 	if ( i > 1 && 
 	     (*p)[i]->id() == ParticleID::g ) {
-	  softHistograms[SoftSubtractionIndex(*p,i)] = SubtractionHistogram(0.001,10.);
+	  softHistograms[SoftSubtractionIndex(*p,i)] = SubtractionHistogram(0.00001,1000.);
+	  ostringstream fname("");
+	  fname << factory()->subtractionData();
+	  const cPDVector& myproc = SoftSubtractionIndex(*p,i).first;
+	  for (cPDVector::const_iterator pp = myproc.begin(); pp != myproc.end(); ++pp) fname << (**pp).PDGName();
+	  fname << "-" << i << "-" << i << "-scatter.dat";
+	  fnamesSoftSubtraction[SoftSubtractionIndex(*p,i)] = fname.str();
 	  if ( theReal->phasespace() )
 	    res->singularLimits().insert(make_pair(i,i));
 	}
@@ -138,7 +138,13 @@ StdXCombPtr SubtractedME::makeXComb(Energy newMaxEnergy, const cPDPair & inc,
 	  }
 	  if ( !haveDipole )
 	    continue;
-	  collinearHistograms[CollinearSubtractionIndex(*p,make_pair(i,j))] = SubtractionHistogram(0.001,20.);
+	  collinearHistograms[CollinearSubtractionIndex(*p,make_pair(i,j))] = SubtractionHistogram(0.00001,1000.);
+	  ostringstream fname("");
+	  fname << factory()->subtractionData();
+	  const cPDVector& myproc = CollinearSubtractionIndex(*p,make_pair(i,j)).first;
+	  for (cPDVector::const_iterator pp = myproc.begin(); pp != myproc.end(); ++pp) fname << (**pp).PDGName();
+	  fname << "-" << i << "-" << j << "-scatter.dat";
+	  fnamesCollinearSubtraction[CollinearSubtractionIndex(*p,make_pair(i,j))] = fname.str();
 	  if ( theReal->phasespace() )
 	    res->singularLimits().insert(make_pair(i,j));
 	}
@@ -162,9 +168,9 @@ MEBase::DiagramVector SubtractedME::dependentDiagrams(const cPDVector& proc,
     dynamic_ptr_cast<Ptr<SubtractionDipole>::tptr>(depME);
 
   if ( !dipole ) {
-    Throw<InitException>() << "A dependent matrix element of SubtractedME "
+    throw Exception() << "SubtractedME: A dependent matrix element of SubtractedME "
 			   << "has not been derived from SubtractionDipole. "
-			   << "Please check the corresponding input file.";
+			   << "Please check the corresponding input file." << Exception::runerror;
   }
 
   return dipole->underlyingBornDiagrams(proc);
@@ -191,22 +197,22 @@ void SubtractedME::getDipoles() {
     dynamic_ptr_cast<Ptr<MatchboxMEBase>::tptr>(head());
 
   if ( borns().empty() || !real )
-    Throw<InitException>() << "The SubtractedME '"
+    throw Exception() << "SubtractedME: The SubtractedME '"
 			   << name() << "' could not generate "
 			   << "subtraction terms for the real emission "
 			   << "matrix element '" << real->name() << "'. "
-			   << "Please check the corresponding input file.";
+			   << "Please check the corresponding input file." << Exception::runerror;
 
   Ptr<MatchboxMEBase>::ptr myRealEmissionME = real->cloneMe();
   ostringstream pname;
   pname << fullName() << "/" << myRealEmissionME->name();
   if ( ! (generator()->preinitRegister(myRealEmissionME,pname.str()) ) )
-    throw InitException() << "Matrix element " << pname.str() << " already existing.";
+    throw Exception() << "SubtractedME: Matrix element " << pname.str() << " already existing." << Exception::runerror;
   myRealEmissionME->cloneDependencies(pname.str());
   head(myRealEmissionME);
   real = myRealEmissionME;
 
-  MEVector dipMEs;
+  dependent().clear();
   vector<Ptr<SubtractionDipole>::ptr> genDipoles
     = real->getDipoles(DipoleRepository::dipoles(factory()->dipoleSet()),borns());
 
@@ -216,7 +222,7 @@ void SubtractedME::getDipoles() {
       (**d).doTestSubtraction();
   }
 
-  if ( genDipoles.empty() ) {
+  if ( genDipoles.empty() && factory()->initVerbose() ) {
     // probably finite real contribution, but warn
     generator()->log() << "\nWarning: No subtraction dipoles could be found for the process:\n";
     generator()->log() << real->subProcess().legs[0]->PDGName() << " " 
@@ -228,11 +234,11 @@ void SubtractedME::getDipoles() {
     generator()->log() << "Assuming finite tree-level O(alphaS) correction.\n";
   }
 
-  dipMEs.resize(genDipoles.size());
-  copy(genDipoles.begin(),genDipoles.end(),dipMEs.begin());
+  dependent().resize(genDipoles.size());
+  copy(genDipoles.begin(),genDipoles.end(),dependent().begin());
 
   if ( !factory()->reweighters().empty() ) {
-    for ( MEVector::const_iterator d = dipMEs.begin(); d != dipMEs.end(); ++d ) {
+    for ( MEVector::const_iterator d = dependent().begin(); d != dependent().end(); ++d ) {
       for ( vector<ReweightPtr>::const_iterator rw = factory()->reweighters().begin();
 	    rw != factory()->reweighters().end(); ++rw )
 	(**d).addReweighter(*rw);
@@ -240,14 +246,12 @@ void SubtractedME::getDipoles() {
   }
 
   if ( !factory()->preweighters().empty() ) {
-    for ( MEVector::const_iterator d = dipMEs.begin(); d != dipMEs.end(); ++d ) {
+    for ( MEVector::const_iterator d = dependent().begin(); d != dependent().end(); ++d ) {
       for ( vector<ReweightPtr>::const_iterator rw = factory()->preweighters().begin();
 	    rw != factory()->preweighters().end(); ++rw )
 	(**d).addPreweighter(*rw);
     }
   }
-
-  dependent() = dipMEs;
 
 }
 
@@ -260,7 +264,7 @@ void SubtractedME::cloneRealME(const string& prefix) {
     ostringstream pname;
     pname << (prefix == "" ? fullName() : prefix) << "/" << myRealEmissionME->name();
     if ( ! (generator()->preinitRegister(myRealEmissionME,pname.str()) ) )
-      throw InitException() << "Matrix element " << pname.str() << " already existing.";
+      throw Exception() << "SubtractedME: Matrix element " << pname.str() << " already existing." << Exception::runerror;
     myRealEmissionME->cloneDependencies(pname.str());
     theReal = myRealEmissionME;
   }
@@ -283,7 +287,7 @@ void SubtractedME::cloneDipoles(const string& prefix) {
     ostringstream pname;
     pname << (prefix == "" ? fullName() : prefix) << "/" << cloned->name();
     if ( ! (generator()->preinitRegister(cloned,pname.str()) ) )
-      throw InitException() << "Subtraction dipole " << pname.str() << " already existing.";
+      throw Exception() << "SubtractedME: Subtraction dipole " << pname.str() << " already existing." << Exception::runerror;
     cloned->cloneDependencies(pname.str());
     dipMEs.push_back(cloned);
 
@@ -348,10 +352,23 @@ void SubtractedME::doVirtualShowerSubtraction() {
   }
 }
 
+void SubtractedME::doLoopSimSubtraction() { 
+  theLoopSimSubtraction = true; 
+  for ( MEVector::const_iterator m = dependent().begin();
+	m != dependent().end(); ++m ) {
+    Ptr<SubtractionDipole>::tptr dip = 
+      dynamic_ptr_cast<Ptr<SubtractionDipole>::tptr>(*m);
+    assert(dip);
+    dip->showerApproximation(showerApproximation());
+    dip->doLoopSimSubtraction();
+  }
+}
+
+
 void SubtractedME::setVetoScales(tSubProPtr) const {}
 
 void SubtractedME::fillProjectors() {
-  if ( !inclusive() && !virtualShowerSubtraction() )
+  if ( !virtualShowerSubtraction() && !loopSimSubtraction() )
     return;
   Ptr<StdXCombGroup>::tptr group = 
     dynamic_ptr_cast<Ptr<StdXCombGroup>::tptr>(lastXCombPtr());
@@ -360,59 +377,23 @@ void SubtractedME::fillProjectors() {
     if ( !(**d).matrixElement()->apply() ||
 	 !(**d).kinematicsGenerated() )
       continue;
-    if ( (**d).willPassCuts() )
-      lastXCombPtr()->projectors().insert((**d).cutWeight(),*d);
+    if ( (**d).willPassCuts() &&
+	 (**d).lastMECrossSection()/picobarn != 0.0 ) {
+      lastXCombPtr()->projectors().insert(abs((**d).cutWeight()*(**d).lastMECrossSection()/picobarn),*d);//
+    }
   }
 }
 
-double SubtractedME::reweightHead(const vector<tStdXCombPtr>& dep) {
+double SubtractedME::reweightHead(const vector<tStdXCombPtr>&) {
 
-  if ( inclusive() && !lastXComb().lastProjector() )
-    return 1.;
+  if ( showerApproximation() ) {
 
-  if ( virtualShowerSubtraction() && !lastXComb().lastProjector() ) {
-    return 0.;
-  }
+    if ( realShowerSubtraction() )
+      return 1.;
 
-  if ( realShowerSubtraction() ) {
-    assert(showerApproximation());
-    bool below = showerApproximation()->belowCutoff();
-    double haveNoDipole = 1.0;
-    for ( vector<tStdXCombPtr>::const_iterator d = dep.begin(); d != dep.end(); ++d ) {
-      if ( !(**d).matrixElement()->apply() ||
-	   !(**d).kinematicsGenerated() )
-	continue;
-      haveNoDipole *= 1. - (**d).cutWeight();
-      if ( haveNoDipole == 0.0 )
-	break;
-    }
-    if ( below )
-      return haveNoDipole;
-    return 1.;
-  }
+    if ( virtualShowerSubtraction() || loopSimSubtraction() )
+      return 0.;
 
-  if ( virtualShowerSubtraction() || inclusive() ) {
-    if ( virtualShowerSubtraction() ) {
-      assert(showerApproximation());
-      bool above = !showerApproximation()->belowCutoff();
-      if ( above )
-	return 0.;
-    }
-    double sum = 0.;
-    double n = 0.;
-    double haveNoDipole = 1.0;
-    for ( vector<tStdXCombPtr>::const_iterator d = dep.begin(); d != dep.end(); ++d ) {
-      if ( !(**d).matrixElement()->apply() ||
-	   !(**d).kinematicsGenerated() )
-	continue;
-      if ( (**d).willPassCuts() ) {
-	sum += (**d).lastME2() * (**d).cutWeight();
-	n += (**d).cutWeight();
-	haveNoDipole *= 1. - (**d).cutWeight();
-      }
-    }
-    return
-      n * (1.-haveNoDipole) * lastXComb().lastProjector()->lastME2() * lastXComb().lastProjector()->cutWeight() / sum;
   }
 
   return 1.;
@@ -421,40 +402,38 @@ double SubtractedME::reweightHead(const vector<tStdXCombPtr>& dep) {
 
 double SubtractedME::reweightDependent(tStdXCombPtr xc, const vector<tStdXCombPtr>& dep) {
 
-  if ( inclusive() && !lastXComb().lastProjector() )
-    return 0.;
+  if ( showerApproximation() ) {
 
-  if ( virtualShowerSubtraction() && !lastXComb().lastProjector() ) {
-    return 0.;
-  }
+    if ( realShowerSubtraction() )
+      return 1.0;
 
-  if ( virtualShowerSubtraction() || inclusive() ) {
-    if ( xc != lastXComb().lastProjector() )
-      return 0.;
-    double n = 0.;
-    double haveNoDipole = 1.0;
-    for ( vector<tStdXCombPtr>::const_iterator d = dep.begin(); d != dep.end(); ++d ) {
-      if ( !(**d).matrixElement()->apply() ||
-	   !(**d).kinematicsGenerated() )
-	continue;
-      if ( (**d).willPassCuts() ) {
-	n += (**d).cutWeight();
-	haveNoDipole *= 1. - (**d).cutWeight();
+    if ( virtualShowerSubtraction() || loopSimSubtraction() ) {
+
+      if ( !lastXComb().lastProjector() )
+	return 0.0;
+
+      if ( xc != lastXComb().lastProjector() )
+	return 0.0;
+
+      double invPAlpha = 0.;
+
+      for ( vector<tStdXCombPtr>::const_iterator d = dep.begin(); d != dep.end(); ++d ) {
+	if ( !(**d).matrixElement()->apply() ||
+	     !(**d).kinematicsGenerated() )
+	  continue;
+	if ( (**d).willPassCuts() &&
+	     (**d).lastMECrossSection()/picobarn != 0.0 ) {
+	  invPAlpha += abs((**d).cutWeight()*(**d).lastMECrossSection()/picobarn);
+	}
       }
-    }
-    return n * (1. - haveNoDipole);
-  }
 
-  if ( realShowerSubtraction() ) {
-    double haveNoDipole = 1.0;
-    for ( vector<tStdXCombPtr>::const_iterator d = dep.begin(); d != dep.end(); ++d ) {
-      if ( !(**d).kinematicsGenerated() )
-	continue;
-      haveNoDipole *= 1. - (**d).cutWeight();
-      if ( haveNoDipole == 0.0 )
-	break;
+      assert(invPAlpha != 0.0 && xc->cutWeight() != 0.0 && xc->lastMECrossSection()/picobarn != 0.0);
+      double palpha = abs((xc->cutWeight())*(xc->lastMECrossSection()/picobarn))/invPAlpha;
+
+      return 1./palpha;
+
     }
-    return 1. - haveNoDipole;
+
   }
 
   return 1.;
@@ -475,6 +454,10 @@ void SubtractedME::doinit() {
     getDipoles();
   }
 
+  for ( vector<Ptr<MatchboxMEBase>::ptr>::iterator b = theBorns.begin();
+	b != theBorns.end(); ++b )
+    (**b).init();
+
   if ( initVerbose() )
     print(Repository::clog());
 
@@ -490,9 +473,13 @@ void SubtractedME::doinitrun() {
     return;
   }
 
-  MEGroup::doinitrun();
-
   theReal = dynamic_ptr_cast<Ptr<MatchboxMEBase>::tptr>(head());
+
+  for ( vector<Ptr<MatchboxMEBase>::ptr>::iterator b = theBorns.begin();
+	b != theBorns.end(); ++b )
+    (**b).initrun();
+
+  MEGroup::doinitrun();
 
 }
 
@@ -510,6 +497,8 @@ void SubtractedME::dofinish() {
 	  const_iterator b = collinearHistograms.begin();
 	b != collinearHistograms.end(); ++b ) {
     b->second.dump(factory()->subtractionData(),
+       factory()->subtractionPlotType(),
+       factory()->subtractionScatterPlot(),
 		   b->first.first,
 		   b->first.second.first,
 		   b->first.second.second);
@@ -519,6 +508,8 @@ void SubtractedME::dofinish() {
 	  const_iterator b = softHistograms.begin();
 	b != softHistograms.end(); ++b ) {
     b->second.dump(factory()->subtractionData(),
+       factory()->subtractionPlotType(),
+       factory()->subtractionScatterPlot(),
 		   b->first.first,
 		   b->first.second,
 		   b->first.second);
@@ -601,8 +592,13 @@ void SubtractedME::SubtractionHistogram::persistentInput(PersistentIStream& is) 
 
 void SubtractedME::SubtractionHistogram::
 dump(const std::string& prefix, 
+     const int& plottype,
+     const bool& scatterplot,
      const cPDVector& proc,
      int i, int j) const {
+  bool bbmin = true;
+  double bmin = bins.begin()->first;
+  double bmax = bins.begin()->first;
   ostringstream fname("");
   for ( cPDVector::const_iterator p = proc.begin();
 	p != proc.end(); ++p )
@@ -611,43 +607,73 @@ dump(const std::string& prefix,
   ofstream out((prefix+fname.str()+".dat").c_str());
   for ( map<double,pair<double,double> >::const_iterator b = bins.begin();
 	b != bins.end(); ++b ) {
-    map<double,pair<double,double> >::const_iterator bp = b; --bp;
+    map<double,pair<double,double> >::const_iterator bp = b; 
+    if (bp== bins.begin())continue;
+    --bp;
+
     if ( b->second.first != Constants::MaxDouble ||
 	 b->second.second != 0.0 ) {
-      if ( b != bins.begin() )
-	out << bp->first;
-      else
-	out << lower;
+      if ( b != bins.begin() ){
+        out << bp->first;
+        if (bbmin){
+          bmin = bp->first;
+          bbmin = false;
+        }
+      }
+      else {
+        out << lower;
+        if (bbmin){
+          bmin = lower;
+          bbmin = false;
+        }
+      }
+      bmax = b->first;
       out << " " << b->first
 	  << " " << b->second.first
 	  << " " << b->second.second
 	  << "\n" << flush;
     }
   }
+  double xmin = pow(10.0, floor(log10(bmin)));
+  double xmax = pow(10.0, ceil(log10(bmax)));
   ofstream gpout((prefix+fname.str()+".gp").c_str());
-  gpout << "set terminal epslatex color solid;\n"
-	<< "set output '" << fname.str() << "-plot.tex';\n"
-	<< "set log x;\n"
-	<< "set size 0.5,0.6;\n"
-	<< "set yrange [0:2];\n"
-	<< "set xrange [0.001:10];\n";
+  gpout << "set terminal epslatex color solid\n"
+      << "set output '" << fname.str() << "-plot.tex'\n"
+      << "set format x '$10^{%T}$'\n"
+      << "set logscale x\n"
+      << "set xrange [" << xmin << ":" << xmax << "]\n";
   if ( i != j ) {
     gpout << "set xlabel '$\\sqrt{s_{" << i << j << "}}/{\\rm GeV}$'\n";
   } else {
     gpout << "set xlabel '$E_{" << i << "}/{\\rm GeV}$'\n";
   }
-  gpout << "plot 1 w lines lc rgbcolor \"#DDDDDD\" notitle, '" << fname.str() 
-	<< ".dat' u (($1+$2)/2.):3:($4 < 4. ? $4 : 4.) w filledcurves lc rgbcolor \"#00AACC\" t "
-	<< "'$";
+  if (plottype == 1){
+    gpout << "set size 0.5,0.6\n"
+    << "set yrange [0:2]\n";
+    gpout << "plot 1 w lines lc rgbcolor \"#DDDDDD\" notitle, '" << fname.str()
+    << ".dat' u (($1+$2)/2.):3:($4 < 4. ? $4 : 4.) w filledcurves lc rgbcolor \"#00AACC\" t '$";
+  }
+  else if (plottype == 2){
+    gpout << "set key left top Left reverse\n"
+        << "set logscale y\n"
+        << "set format y '$10^{%T}$'\n"
+        << "set size 0.7,0.8\n"
+        << "set yrange [1e-6:1e1]\n"
+        << "set ylabel '$\\max\\left\\{\\left|\\mathcal{D}-\\mathcal{M}\\right|/\\left|\\mathcal{M}\\right|\\right\\}$'\n"
+        << "unset bars\n";
+    gpout << "plot '";
+    if (scatterplot) gpout << fname.str() << "-scatter.dat' w points pt 7 ps 0.5 lc rgbcolor \"#00AACC\" not, \\\n'";
+    gpout << fname.str() << ".dat' u (($1+$2)/2.):4 w lines lw 4 lc rgbcolor \"#00AACC\" t '$";
+  }
   for ( size_t k = 0; k < proc.size(); k++ ) {
     if ( k == 2 )
       gpout << "\\to ";
     gpout << (proc[k]->id() < 0 ? "\\bar{" : "")
-	  << (proc[k]->id() < 0 ? proc[k]->CC()->PDGName() : proc[k]->PDGName())
-	  << (proc[k]->id() < 0 ? "}" : "") << " ";
+    << (proc[k]->id() < 0 ? proc[k]->CC()->PDGName() : proc[k]->PDGName())
+    << (proc[k]->id() < 0 ? "}" : "") << " ";
   }
-  gpout << "$';\n";
-  gpout << "reset;\n";
+  gpout << "$'\n";
+  gpout << "reset\n";
 }
 
 void SubtractedME::lastEventSubtraction() {
@@ -672,7 +698,9 @@ void SubtractedME::lastEventSubtraction() {
   if ( xc->cutWeight() < 1.0 )
     return;
 
-  double delta = abs(xcdip)/abs(xcme2);
+  double delta;
+  if (factory()->subtractionPlotType() == 2) delta = abs(xcdip+xcme2)/abs(xcme2);
+  else delta = abs(xcdip)/abs(xcme2);
 
   if ( theReal->phasespace() ) {
     size_t i = lastSingularLimit()->first;
@@ -682,6 +710,10 @@ void SubtractedME::lastEventSubtraction() {
 	 != softHistograms.end() ) {
       softHistograms[SoftSubtractionIndex(head()->mePartonData(),i)].
 	book(meMomenta()[i].t()/GeV,delta);
+	   if ( factory()->subtractionScatterPlot() ){
+	     ofstream outstream((fnamesSoftSubtraction[SoftSubtractionIndex(head()->mePartonData(),i)]).c_str(),ofstream::app);
+	     outstream << meMomenta()[i].t()/GeV << " " << delta << "\n";
+	   }
     }
     if ( i != j &&
 	 collinearHistograms.find(CollinearSubtractionIndex(head()->mePartonData(),make_pair(i,j))) 
@@ -689,6 +721,10 @@ void SubtractedME::lastEventSubtraction() {
       double s = sqrt(2.*meMomenta()[i]*meMomenta()[j])/GeV;
       collinearHistograms[CollinearSubtractionIndex(head()->mePartonData(),make_pair(i,j))].
 	book(s,delta);
+      if ( factory()->subtractionScatterPlot() ){
+        ofstream outstream((fnamesCollinearSubtraction[CollinearSubtractionIndex(head()->mePartonData(),make_pair(i,j))]).c_str(),ofstream::app);
+        outstream << s << " " << delta << "\n";
+      }
     }
     return;
   }
@@ -699,6 +735,10 @@ void SubtractedME::lastEventSubtraction() {
 	   != softHistograms.end() ) {
 	softHistograms[SoftSubtractionIndex(head()->mePartonData(),i)].
 	  book(meMomenta()[i].t()/GeV,delta);
+  if ( factory()->subtractionScatterPlot() ){
+    ofstream outstream((fnamesSoftSubtraction[SoftSubtractionIndex(head()->mePartonData(),i)]).c_str(),ofstream::app);
+    outstream << meMomenta()[i].t()/GeV << " " << delta << "\n";
+  }
       }
     }
     for ( size_t j = i+1; j < meMomenta().size(); ++j ) {
@@ -708,6 +748,10 @@ void SubtractedME::lastEventSubtraction() {
       double s = sqrt(2.*meMomenta()[i]*meMomenta()[j])/GeV;
       collinearHistograms[CollinearSubtractionIndex(head()->mePartonData(),make_pair(i,j))].
 	book(s,delta);
+      if ( factory()->subtractionScatterPlot() ){
+        ofstream outstream((fnamesCollinearSubtraction[CollinearSubtractionIndex(head()->mePartonData(),make_pair(i,j))]).c_str(),ofstream::app);
+        outstream << s << " " << delta << "\n";
+      }
     }
   }
 
@@ -716,15 +760,17 @@ void SubtractedME::lastEventSubtraction() {
 void SubtractedME::persistentOutput(PersistentOStream & os) const {
   os << theLastXComb << theFactory << theBorns << theReal 
      << collinearHistograms << softHistograms 
+     << fnamesSoftSubtraction
      << theRealShowerSubtraction << theVirtualShowerSubtraction
-     << theSubProcessGroups << theInclusive;
+     << theLoopSimSubtraction;
 }
 
 void SubtractedME::persistentInput(PersistentIStream & is, int) {
   is >> theLastXComb >> theFactory >> theBorns >> theReal 
      >> collinearHistograms >> softHistograms 
+     >> fnamesSoftSubtraction
      >> theRealShowerSubtraction >> theVirtualShowerSubtraction
-     >> theSubProcessGroups >> theInclusive;
+     >> theLoopSimSubtraction;
   lastMatchboxXComb(theLastXComb);
 }
 
@@ -741,4 +787,4 @@ void SubtractedME::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<SubtractedME,MEGroup>
-describeHerwigSubtractedME("Herwig::SubtractedME", "HwMatchbox.so");
+describeHerwigSubtractedME("Herwig::SubtractedME", "Herwig.so");

@@ -20,19 +20,21 @@
 #include "ThePEG/PDT/WidthGenerator.h"
 #include "ThePEG/PDT/DecayMode.h"
 
+#include "PrototypeVertex.h"
+
 using namespace Herwig;
 
 BSMModel::BSMModel() : decayFile_(), readDecays_(true),
 		       topModesFromFile_(false),
-		       tolerance_(1e-6)
+		       tolerance_(1e-6), allowedToResetSMWidths_(false)
 {}
 
 void BSMModel::persistentOutput(PersistentOStream & os) const {
-  os << decayFile_ << topModesFromFile_ << tolerance_;
+  os << decayFile_ << topModesFromFile_ << tolerance_ << allowedToResetSMWidths_;
 }
 
 void BSMModel::persistentInput(PersistentIStream & is, int) {
-  is >> decayFile_ >> topModesFromFile_ >> tolerance_;
+  is >> decayFile_ >> topModesFromFile_ >> tolerance_ >> allowedToResetSMWidths_;
 }
 
 DescribeAbstractClass<BSMModel,Herwig::StandardModel>
@@ -52,7 +54,7 @@ void BSMModel::Init() {
 
   static Switch<BSMModel,bool> interfaceTopModes
     ("TopModes",
-     "Whether ro use the Herwig++ SM top decays or those from the SLHA file",
+     "Whether ro use the Herwig SM top decays or those from the SLHA file",
      &BSMModel::topModesFromFile_, false, false, false);
   static SwitchOption interfaceTopModesFile
     (interfaceTopModes,
@@ -69,6 +71,21 @@ void BSMModel::Init() {
      "Tolerance for the sum of branching ratios to be difference from one.",
      &BSMModel::tolerance_, 1e-6, 1e-8, 0.01,
      false, false, Interface::limited);
+
+  static Switch<BSMModel,bool> interfaceAllowedToResetSMWidths
+    ("AllowedToResetSMWidths",
+     "Whether or not the widths of SM particles can be reset via the SLHA file",
+     &BSMModel::allowedToResetSMWidths_, false, false, false);
+  static SwitchOption interfaceAllowedToResetSMWidthsNo
+    (interfaceAllowedToResetSMWidths,
+     "No",
+     "Not allowed",
+     false);
+  static SwitchOption interfaceAllowedToResetSMWidthsYes
+    (interfaceAllowedToResetSMWidths,
+     "Yes",
+     "Allowed",
+     true);
 
 }
 
@@ -98,7 +115,7 @@ void BSMModel::decayRead() {
   DecaySet::const_iterator dend = h0->decayModes().end();
   for( ; dit != dend; ++dit ) {
     generator()->preinitInterface(*dit, "BranchingRatio", "set", "0.");
-    generator()->preinitInterface(*dit, "OnOff", "set", "Off");
+    generator()->preinitInterface(*dit, "Active", "set", "No");
   }
   // if taking the top modes from the file
   // delete the SM stuff
@@ -110,7 +127,7 @@ void BSMModel::decayRead() {
     DecaySet::const_iterator dend = top->decayModes().end();
     for( ; dit != dend; ++dit ) {
       generator()->preinitInterface(*dit, "BranchingRatio", "set", "0.");
-      generator()->preinitInterface(*dit, "OnOff", "set", "Off");
+      generator()->preinitInterface(*dit, "Active", "set", "No");
     }
   }
   // read first line and check if this is a Les Houches event file
@@ -166,9 +183,32 @@ void BSMModel::readDecay(CFileLineReader & cfile,
   		 << "A ParticleData object with the PDG code "
   		 << parent << " does not exist. " 
   		 << Exception::runerror;
-  inpart->width(width);
-  if( width > ZERO ) inpart->cTau(hbarc/width);
-  inpart->widthCut(5.*width);
+  // check this ain't a SM particle
+  if(abs(parent)<=5||abs(parent)==23||abs(parent)==24||
+     (abs(parent)>=11&&abs(parent)<=16)) {
+    if(allowedToResetSMWidths_) {
+      cerr << "BSMModel::readDecay() Resetting width of " 
+	   << inpart->PDGName() << " using SLHA "
+	   << "file,\nthis can affect parts of the Standard Model simulation and"
+	   << " is strongly discouraged.\n";
+      inpart->width(width);
+      if( width > ZERO ) inpart->cTau(hbarc/width);
+      inpart->widthCut(5.*width);
+    }
+    else {
+      cerr << "BSMModel::readDecay() You have tried to Reset the width of " 
+	   << inpart->PDGName() << " using an SLHA "
+	   << "file,\nthis can affect parts of the Standard Model simulation and"
+	   << " is not allowed by default.\n If you really want to be this stupid"
+	   << " set AllowedToResetSMWidths to Yes for this model.\n";
+    }
+  }
+  else {
+    inpart->width(width);
+    if( width > ZERO ) inpart->cTau(hbarc/width);
+    inpart->widthCut(5.*width);
+  }
+  
   Energy inMass = inpart->mass();
   string prefix(inpart->name() + "->");
   double brsum(0.);
@@ -194,6 +234,7 @@ void BSMModel::readDecay(CFileLineReader & cfile,
     vector<tcPDPtr> products,bosons;
     Energy mout(ZERO),moutnoWZ(ZERO);
     string tag = prefix;
+    multiset<tcPDPtr,ParticleOrdering> outgoing;
     int charge = -inpart->iCharge();
     while( true ) {
       long t;
@@ -215,7 +256,7 @@ void BSMModel::readDecay(CFileLineReader & cfile,
       }
       charge += p->iCharge();
       ++npr;
-      tag += p->name() + ",";
+      outgoing.insert(p);
       Energy mass =  p->mass();
       mout += mass;
       if(abs(p->id())==ParticleID::Wplus||p->id()==ParticleID::Z0) {
@@ -235,77 +276,105 @@ void BSMModel::readDecay(CFileLineReader & cfile,
  	<< "file is correct.\n"
  	<< Exception::warning;
     }
-    if( npr > 1 ) {
-      tag.replace(tag.size() - 1, 1, ";");
-      if(charge!=0) {
+
+    // must be at least two decay products
+    if(npr<=1) continue;
+
+    // create the tag
+    for(multiset<tcPDPtr,ParticleOrdering>::iterator it=outgoing.begin();
+	it!=outgoing.end();++it)
+      tag += (**it).name() + ",";
+    tag.replace(tag.size() - 1, 1, ";");
+    if(charge!=0) {
+      cerr << "BSMModel::readDecay() "
+	   << "Decay mode " << tag << " read from SLHA file does not conserve charge,"
+	   << "\nare you really sure you want to do this?\n";
+    }
+    ++nmode;
+    if(nmode==1) {
+      if(abs(parent)<=5||abs(parent)==23||abs(parent)==24||
+	 (abs(parent)>=11&&abs(parent)<=16)) {
+	cerr << "BSMModel::readDecay() Resetting the decays of " 
+	     << inpart->PDGName() << " using SLHA "
+	     << "file,\nthis can affect parts of the Standard Model simulation,"
+	     << " give unexpected results and"
+	     << " is strongly discouraged.\n";
+	cerr << "Switching off all the internal modes so only those from the SLHA file "
+	     << "are used, this may have unintended consequences\n";
+	for(DecaySet::iterator it=inpart->decayModes().begin();
+	    it!=inpart->decayModes().end();++it) {
+	  generator()->preinitInterface(*it, "Active", "set", "No");
+	}
+	if(inpart->CC()) {
+	  for(DecaySet::iterator it=inpart->CC()->decayModes().begin();
+	      it!=inpart->CC()->decayModes().end();++it) {
+	    generator()->preinitInterface(*it, "Active", "set", "No");
+	  }
+	}
+      }
+    }
+    // normal option
+    if(mout<=inMass) {
+      inpart->stable(false);
+      brsum += brat;
+      createDecayMode(tag, brat);
+    }
+    // no possible off-shell gauge bosons throw it away
+    else if(bosons.empty() || bosons.size()>2 ||
+	    moutnoWZ>=inMass) {
+      cerr << "BSMModel::readDecay() "
+	   << "The decay " << tag << " cannot proceed for on-shell "
+	   << "particles, skipping it.\n";
+    }
+    else {
+      Energy maxMass = inMass - moutnoWZ;
+      string newTag = prefix;
+      for(unsigned int ix=0;ix<products.size();++ix)
+	newTag += products[ix]->name() + ",";
+      if(bosons.size()==1) {
 	cerr << "BSMModel::readDecay() "
-	     << "Decay mode " << tag << " read from SLHA file does not conserve charge,"
-	     << "\nare you really sure you want to do this?\n";
+	     << "The decay " << tag << " cannot proceed for on-shell\n"
+	     << "particles, replacing gauge boson with its decay products\n";
+	vector<pair<double,string> > modes = 
+	  createWZDecayModes(newTag,brat,bosons[0],maxMass);
+	for(unsigned int ix=0;ix<modes.size();++ix) {
+	  modes[ix].second.replace(modes[ix].second.size() - 1, 1, ";");
+	  createDecayMode(modes[ix].second,modes[ix].first);
+	  brsum += modes[ix].first;
+	}
       }
-      ++nmode;
-      // normal option
-      if(mout<=inMass) {
-  	inpart->stable(false);
-  	brsum += brat;
-  	createDecayMode(tag, brat);
-      }
-      // no possible off-shell gauge bosons throw it away
-      else if(bosons.empty() || bosons.size()>2 ||
-  	      moutnoWZ>=inMass) {
-  	cerr << "BSMModel::readDecay() "
-  	     << "The decay " << tag << " cannot proceed for on-shell "
-  	     << "particles, skipping it.\n";
+      else if(bosons.size()==2) {
+	bool identical = bosons[0]->id()==bosons[1]->id();
+	if(maxMass>bosons[0]->mass()&&maxMass>bosons[1]->mass()) {
+	  cerr << "BSMModel::readDecay() "
+	       << "The decay " << tag << " cannot proceed for on-shell\n"
+	       << "particles, replacing one of the gauge bosons"
+	       << " with its decay products\n";
+	  unsigned int imax = identical ? 1 : 2;
+	  if(imax==2) brat *= 0.5;
+	  for(unsigned int ix=0;ix<imax;++ix) {
+	    string newTag2 = newTag+bosons[ix]->name()+',';
+	    unsigned int iother = ix==0 ? 1 : 0;
+	    vector<pair<double,string> > modes = 
+	      createWZDecayModes(newTag2,brat,bosons[iother],maxMass);
+	    for(unsigned int ix=0;ix<modes.size();++ix) {
+	      modes[ix].second.replace(modes[ix].second.size() - 1, 1, ";");
+	      createDecayMode(modes[ix].second,modes[ix].first);
+	      brsum += modes[ix].first;
+	    }
+	  }
+	}
+	else {
+	  cerr << "BSMModel::readDecay() "
+	       << "The decay " << tag << " cannot proceed for on-shell\n"
+	       << "particles, and has too many off-shell gauge bosons,"
+	       << " skipping it.\n";
+	}
       }
       else {
-  	Energy maxMass = inMass - moutnoWZ;
-  	string newTag = prefix;
-  	for(unsigned int ix=0;ix<products.size();++ix)
-  	  newTag += products[ix]->name() + ",";
-  	if(bosons.size()==1) {
-  	  cerr << "BSMModel::readDecay() "
-  	       << "The decay " << tag << " cannot proceed for on-shell\n"
-  	       << "particles, replacing gauge boson with its decay products\n";
-  	  vector<pair<double,string> > modes = 
-  	    createWZDecayModes(newTag,brat,bosons[0],maxMass);
-  	  for(unsigned int ix=0;ix<modes.size();++ix) {
-  	    modes[ix].second.replace(modes[ix].second.size() - 1, 1, ";");
-  	    createDecayMode(modes[ix].second,modes[ix].first);
-  	    brsum += modes[ix].first;
-  	  }
-  	}
-  	else if(bosons.size()==2) {
-  	  bool identical = bosons[0]->id()==bosons[1]->id();
-  	  if(maxMass>bosons[0]->mass()&&maxMass>bosons[1]->mass()) {
-  	    cerr << "BSMModel::readDecay() "
-  		 << "The decay " << tag << " cannot proceed for on-shell\n"
-  		 << "particles, replacing one of the gauge bosons"
-  		 << " with its decay products\n";
-  	    unsigned int imax = identical ? 1 : 2;
-  	    if(imax==2) brat *= 0.5;
-  	    for(unsigned int ix=0;ix<imax;++ix) {
-  	      string newTag2 = newTag+bosons[ix]->name()+',';
-  	      unsigned int iother = ix==0 ? 1 : 0;
-  	      vector<pair<double,string> > modes = 
-  	        createWZDecayModes(newTag2,brat,bosons[iother],maxMass);
-  	      for(unsigned int ix=0;ix<modes.size();++ix) {
-  		modes[ix].second.replace(modes[ix].second.size() - 1, 1, ";");
-  		createDecayMode(modes[ix].second,modes[ix].first);
-  		brsum += modes[ix].first;
-  	      }
-  	    }
-  	  }
-  	  else {
-  	    cerr << "BSMModel::readDecay() "
-  		 << "The decay " << tag << " cannot proceed for on-shell\n"
-  		 << "particles, and has too many off-shell gauge bosons,"
-  		 << " skipping it.\n";
-  	  }
-  	}
-  	else {
-  	  cerr << "BSMModel::readDecay() "
-  	       << "The decay " << tag << " cannot proceed for on-shell\n"
-  	       << "particles, and has too many outgoing gauge bosons skipping it.\n";
-  	}
+	cerr << "BSMModel::readDecay() "
+	     << "The decay " << tag << " cannot proceed for on-shell\n"
+	     << "particles, and has too many outgoing gauge bosons skipping it.\n";
       }
     }
   }
@@ -317,22 +386,28 @@ void BSMModel::readDecay(CFileLineReader & cfile,
   }
   if(nmode>0) {
     inpart->update();
-    if(inpart->CC()) inpart->CC()->update();
+    inpart->reset();
+    if(inpart->CC()) {
+      inpart->CC()->update();
+      inpart->CC()->reset();
+    }
+    if(inpart->massGenerator())
+      inpart->massGenerator()->reset();
+    if(inpart->widthGenerator())
+      inpart->widthGenerator()->reset();
   }
 }
 
 void BSMModel::createDecayMode(string tag, double brat) const {
   tDMPtr dm = generator()->findDecayMode(tag);
-  if(!dm) {
-    dm = generator()->preinitCreateDecayMode(tag);
-  }
-  generator()->preinitInterface(dm, "OnOff", "set", "On");
+  if(!dm) dm = generator()->preinitCreateDecayMode(tag);
+  generator()->preinitInterface(dm, "Active", "set", "Yes");
   generator()->preinitInterface(dm, "Decayer", "set","/Herwig/Decays/Mambo");
   ostringstream brf;
   brf << setprecision(13)<< brat;
   generator()->preinitInterface(dm, "BranchingRatio","set", brf.str());
   if(dm->CC()) {
-    generator()->preinitInterface(dm->CC(), "OnOff", "set", "On");
+    generator()->preinitInterface(dm->CC(), "Active", "set", "Yes");
     generator()->preinitInterface(dm->CC(), "Decayer", "set","/Herwig/Decays/Mambo");
     generator()->preinitInterface(dm->CC(), "BranchingRatio","set", brf.str());
   }

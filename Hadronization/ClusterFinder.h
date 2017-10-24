@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ClusterFinder.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// ClusterFinder.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_ClusterFinder_H
@@ -44,6 +44,17 @@ using namespace ThePEG;
  */
 class ClusterFinder: public Interfaced {
 
+public :
+
+  /** @name Standard constructors and destructors. */
+  //@{
+  /**
+   * Default constructor.
+   */
+  ClusterFinder() : heavyDiquarks_(2), diQuarkSelection_(1), diQuarkOnShell_(false)
+  {}
+  //@}
+
 public:
 
   /** 
@@ -75,6 +86,22 @@ public:
    */
   static void Init();
 
+  /** @name Functions used by the persistent I/O system. */
+  //@{
+  /**
+   * Function used to write out object persistently.
+   * @param os the persistent output stream written to.
+   */
+  void persistentOutput(PersistentOStream & os) const;
+
+  /**
+   * Function used to read in object persistently.
+   * @param is the persistent input stream read from.
+   * @param version the version number of the object when written.
+   */
+  void persistentInput(PersistentIStream & is, int version);
+  //@}
+
 protected:
 
   /** @name Clone Methods. */
@@ -98,6 +125,23 @@ private:
    * Private and non-existent assignment operator.
    */
   ClusterFinder & operator=(const ClusterFinder &);
+
+private:
+
+  /**
+   *  Treatment of diquarks contain heavy quarks in baryon-number violating clusters
+   */
+  unsigned int heavyDiquarks_;
+
+  /**
+   *  Option for the selection of which quarks to make into a diquark
+   */
+  unsigned int diQuarkSelection_;
+
+  /**
+   *  Force diquarks to be on-shell
+   */
+  bool diQuarkOnShell_;
 
 };
 

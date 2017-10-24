@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudellbarqqbarqqbar.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudellbarqqbarqqbar.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -40,19 +40,19 @@ IBPtr MatchboxAmplitudellbarqqbarqqbar::fullclone() const {
 
 void MatchboxAmplitudellbarqqbarqqbar::doinit() {
   MatchboxZGammaAmplitude::doinit();
-  MZ = getParticleData(ParticleID::Z0)->mass();
-  GZ = getParticleData(ParticleID::Z0)->width();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MZ = getParticleData(ParticleID::Z0)->hardProcessMass();
+  GZ = getParticleData(ParticleID::Z0)->hardProcessWidth();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   nPoints(6);
 }
 
 void MatchboxAmplitudellbarqqbarqqbar::doinitrun() {
   MatchboxZGammaAmplitude::doinitrun();
-  MZ = getParticleData(ParticleID::Z0)->mass();
-  GZ = getParticleData(ParticleID::Z0)->width();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MZ = getParticleData(ParticleID::Z0)->hardProcessMass();
+  GZ = getParticleData(ParticleID::Z0)->hardProcessWidth();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   nPoints(6);
 }
 
@@ -89,7 +89,7 @@ bool MatchboxAmplitudellbarqqbarqqbar::canHandle(const PDVector& proc) const {
   for ( ; quark != xproc.end(); ++quark )
     if ( abs((**quark).id()) < 6 &&
 	 (**quark).id() > 0 &&
-	 (**quark).mass() == ZERO ) {
+	 (**quark).hardProcessMass() == ZERO ) {
       break;
     }
   if ( quark == xproc.end() )
@@ -109,7 +109,7 @@ bool MatchboxAmplitudellbarqqbarqqbar::canHandle(const PDVector& proc) const {
   for ( ; quark != xproc.end(); ++quark )
     if ( abs((**quark).id()) < 6 &&
 	 (**quark).id() > 0 &&
-	 (**quark).mass() == ZERO ) {
+	 (**quark).hardProcessMass() == ZERO ) {
       break;
     }
   if ( quark == xproc.end() )
@@ -288,17 +288,17 @@ Complex MatchboxAmplitudellbarqqbarqqbar::evaluate(size_t a, const vector<int>& 
   Complex sum4325 = 0.0;
 
   if ( includeGamma() ) {
-    sum2345 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*gamma2345;
-    sum2543 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*gamma2543;
-    sum4523 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*gamma4523;
-    sum4325 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*gamma4325;
+    sum2345 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*gamma2345;
+    sum2543 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*gamma2543;
+    sum4523 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*gamma4523;
+    sum4325 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*gamma4325;
   }
 
   if ( includeZ() ) {
-    sum2345 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*Z2345;
-    sum2543 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*Z2543;
-    sum4523 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*Z4523;
-    sum4325 += sqr(4.*Constants::pi)*SM().alphaEM()*SM().alphaS()*Z4325;
+    sum2345 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*Z2345;
+    sum2543 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*Z2543;
+    sum4523 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*Z4523;
+    sum4325 += sqr(4.*Constants::pi)*SM().alphaEMMZ()*SM().alphaS()*Z4325;
   }
 
   double Nc = SM().Nc();
@@ -366,7 +366,7 @@ void MatchboxAmplitudellbarqqbarqqbar::persistentInput(PersistentIStream &, int)
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxAmplitudellbarqqbarqqbar,MatchboxZGammaAmplitude>
-  describeHerwigMatchboxAmplitudellbarqqbarqqbar("Herwig::MatchboxAmplitudellbarqqbarqqbar", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudellbarqqbarqqbar("Herwig::MatchboxAmplitudellbarqqbarqqbar", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudellbarqqbarqqbar::Init() {
 

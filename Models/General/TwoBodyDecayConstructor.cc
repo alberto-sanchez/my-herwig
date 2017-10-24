@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TwoBodyDecayConstructor.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// TwoBodyDecayConstructor.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -15,8 +15,8 @@
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Interface/Parameter.h"
 #include "ThePEG/Interface/Switch.h"
-#include "Herwig++/Decay/General/GeneralTwoBodyDecayer.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Decay/General/GeneralTwoBodyDecayer.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 #include "ThePEG/PDT/EnumParticles.h"
 #include "DecayConstructor.h"
 #include "ThePEG/Utilities/Throw.h"
@@ -245,16 +245,6 @@ createDecayMode(set<TwoBodyDecay> & decays) {
       pc->name() + ";";
     // Does it exist already ?
     tDMPtr dm = generator()->findDecayMode(tag);
-    // Check if tag is one that should be disabled
-    if( decayConstructor()->disableDecayMode(tag) ) {
-      // If mode alread exists, ie has been read from file, 
-      // disable it
-      if( dm ) {
-	generator()->preinitInterface(dm, "BranchingRatio", "set", "0.0");
-	generator()->preinitInterface(dm, "OnOff", "set", "Off");
-      }
-      continue;
-    }
     // now create DecayMode objects that do not already exist      
     if( createDecayModes() && (!dm || inpart->id() == ParticleID::h0) ) {
       tDMPtr ndm = generator()->preinitCreateDecayMode(tag);
@@ -263,14 +253,14 @@ createDecayMode(set<TwoBodyDecay> & decays) {
 	GeneralTwoBodyDecayerPtr decayer=createDecayer(*dit);
 	if(!decayer) continue;
 	generator()->preinitInterface(ndm, "Decayer", "set",
-			     decayer->fullName());
-	generator()->preinitInterface(ndm, "OnOff", "set", "On");
+				      decayer->fullName());
+	generator()->preinitInterface(ndm, "Active", "set", "Yes");
 	Energy width = 
 	  decayer->partialWidth(make_pair(inpart,inpart->mass()),
 				make_pair(pb,pb->mass()) , 
 				make_pair(pc,pc->mass()));
 	setBranchingRatio(ndm, width);
-	if(ndm->brat()<decayConstructor()->minimumBR()) {
+	if(width==ZERO || ndm->brat()<decayConstructor()->minimumBR()) {
 	  generator()->preinitInterface(decayer->fullName(),
 					"Initialize", "set","0");
 	}
@@ -291,6 +281,20 @@ createDecayMode(set<TwoBodyDecay> & decays) {
 	if(!decayer) continue;
 	generator()->preinitInterface(dm, "Decayer", "set", 
 				      decayer->fullName());
+	Energy width = 
+	  decayer->partialWidth(make_pair(inpart,inpart->mass()),
+				make_pair(pb,pb->mass()) , 
+				make_pair(pc,pc->mass()));
+	if(width/(dm->brat()*inpart->width())<1e-10) {
+	  string message = "Herwig calculation of the partial width for the decay mode "
+	    + inpart->PDGName() + " -> " + pb->PDGName() + " " + pc->PDGName()
+	    + " is zero.\n This will cause problems with the calculation of"
+	    + " spin correlations.\n It is probably due to inconsistent parameters"
+	    + " and decay modes being passed to Herwig via the SLHA file.\n"
+	    + " Zeroing the branching ratio for this mode.";
+	  setBranchingRatio(dm,ZERO);
+	  generator()->logWarning(NBodyDecayConstructorError(message,Exception::warning));
+	}
       }
     }
   }

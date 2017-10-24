@@ -1,41 +1,56 @@
-============
-Herwig++ 2.7
-============
+================================================================================
+Herwig 7.1.1
+================================================================================
 
 Please contact <herwig@projects.hepforge.org> for any queries.
 
-========
-Authors:
-========
-Ken Arnold
+--------------------------------------------------------------------------------
+Herwig is actively developed by:
+--------------------------------------------------------------------------------
+
 Johannes Bellm
-Nadine Fischer
 Stefan Gieseke
 David Grellscheid
-Keith Hamilton
+Patrick Kirchgaeßer
+Frashër Loshaj
+Graeme Nail
 Andreas Papaefstathiou
 Simon Plätzer
+Radek Podskubka
+Michael Rauch
+Christian Reuschle
 Peter Richardson
-Christian Röhr
-Alex Schofield
-Thomas Schuh
+Peter Schichtel
 Mike Seymour
-Andrzej Siódmok
-Martin Stoll
-David Winn
-Benedikt Zimmermann
+Andrzej Siödmok
+Stephen Webster
 
-===============
-Former authors:
-===============
+
+--------------------------------------------------------------------------------
+Former authors are:
+--------------------------------------------------------------------------------
+
+Ken Arnold
 Manuel Bähr
 Luca d'Errico
 Martyn Gigg
+Nadine Fischer
+Keith Hamilton
+Marco A. Harrendorf
 Seyi Latunde-Dada
+Daniel Rauch
 Alberto Ribon
+Christian Röhr
 Pavel Růžička
+Alex Schofield
+Thomas Schuh
 Alexander Sherstnev
 Philip Stephens
+Martin Stoll
 Louise Suter
 Jon Tully
 Bryan Webber
+Alix Wilcock
+David Winn
+Benedikt Zimmermann
+

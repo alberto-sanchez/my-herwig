@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// PartonSplitter.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// PartonSplitter.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,8 +20,9 @@
 #include <ThePEG/EventRecord/Step.h>
 #include <ThePEG/Repository/EventGenerator.h>
 #include <ThePEG/Repository/CurrentGenerator.h>
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
 #include <ThePEG/Utilities/DescribeClass.h>
+#include "ClusterHadronizationHandler.h"
 
 using namespace Herwig;
 
@@ -34,11 +35,11 @@ IBPtr PartonSplitter::fullclone() const {
 }
 
 void PartonSplitter::persistentOutput(PersistentOStream & os) const {
-  os << _quarkSelector;
+  os << _quarkSelector << ounit(_gluonDistance,femtometer);
 }
 
 void PartonSplitter::persistentInput(PersistentIStream & is, int) {
-  is >> _quarkSelector;
+  is >> _quarkSelector >> iunit(_gluonDistance,femtometer);
 }
 
 DescribeClass<PartonSplitter,Interfaced> 
@@ -52,10 +53,17 @@ void PartonSplitter::Init() {
 }
 
 void PartonSplitter::split(PVector & tagged) {
+  // set the gluon c tau once and for all
+  static bool first = true;
+  if(first) {
+    _gluonDistance = hbarc*getParticleData(ParticleID::g)->constituentMass()/
+      ClusterHadronizationHandler::currentHandler()->minVirtuality2();
+    first = false;
+  }
   PVector newtag;
   Energy2 Q02 = 0.99*sqr(getParticleData(ParticleID::g)->constituentMass());
   // Loop over all of the particles in the event.
-  for(PVector::const_iterator pit = tagged.begin(); pit!=tagged.end(); ++pit) {
+  for(PVector::iterator pit = tagged.begin(); pit!=tagged.end(); ++pit) {
     // only considering gluons so add other particles to list of particles
     if( (**pit).data().id() != ParticleID::g ) {
       newtag.push_back(*pit);
@@ -82,6 +90,15 @@ void PartonSplitter::split(PVector & tagged) {
     (*pit)->antiColourLine()->addAntiColoured(ptrQbar);
     (*pit)->addChild(ptrQbar);
     newtag.push_back(ptrQbar);
+    
+    // set the life length of gluon
+    Length distance = UseRandom::rndExp(_gluonDistance);
+    (**pit).setLifeLength((distance/(**pit).mass())*(**pit).momentum());
+    // assume quarks same position as gluon
+    ptrQ   ->setVertex((**pit).decayVertex());
+    ptrQ   ->setLifeLength(Lorentz5Distance());
+    ptrQbar->setVertex((**pit).decayVertex());
+    ptrQbar->setLifeLength(Lorentz5Distance());
   }
   swap(tagged,newtag);
 }

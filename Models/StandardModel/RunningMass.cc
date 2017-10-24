@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// RunningMass.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// RunningMass.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -91,6 +91,16 @@ vector<Energy> RunningMass::mass() const {
   for ( long f = 1; f <= long(_theMaxFlav); ++f ) {
     PDPtr p = getParticleData(f);
     Energy massf = p ? p->mass() : ZERO;
+    if ( !_theStandardModel->alphaSPtr()->quarkMasses().empty() ) {
+      if ( f < 3 ) {
+	massf = 
+	  f == 1 ?
+	  _theStandardModel->alphaSPtr()->quarkMasses()[1] :
+	  _theStandardModel->alphaSPtr()->quarkMasses()[0];
+      } else {
+	massf = _theStandardModel->alphaSPtr()->quarkMasses()[f-1];
+      }
+    }
     if((f<=3&&_lightOption==0) ||
        (f>3 &&_heavyOption==0)) {
       double coeff = _theQCDOrder==2 ? _theCoefficient[f-1]+4./3./pi : 0.;

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SSGNGVertex.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// SSGNGVertex.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_SSGNGVertex_H
@@ -13,8 +13,8 @@
 //
 
 #include "ThePEG/Helicity/Vertex/Vector/GeneralFFVVertex.h"
-#include "Herwig++/Models/Susy/MSSM.h"
-#include "Herwig++/Models/Susy/MixingMatrix.fh"
+#include "Herwig/Models/Susy/MSSM.h"
+#include "Herwig/Models/Susy/MixingMatrix.fh"
 
 namespace Herwig {
 using namespace ThePEG;
@@ -194,24 +194,29 @@ private:
   long _idlast;
 
   /**
-   * Store the value at which the coupling when it was last evalutated
+   * Store the value at which the coupling when it was last evaluated
    */
   Energy2 _q2last;
 
   /**
-   * Store the value of the coupling when it was last evalutated
+   * Store the value of the coupling when it was last evaluated
    */
   Complex _couplast;
 
   /**
-   * Store the value of the left-coupling when it was last evalutated
+   * Store the value of the left-coupling when it was last evaluated
    */
   complex<InvEnergy> _leftlast;
 
   /**
-   * Store the value of the right-coupling when it was last evalutated
+   * Store the value of the right-coupling when it was last evaluated
    */
   complex<InvEnergy> _rightlast;
+
+  /**
+   *  Whether or not initialised
+   */
+  bool _initLoops;
 };
 }
 

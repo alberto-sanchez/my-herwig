@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IILightTildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IILightTildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -79,6 +79,23 @@ Energy IILightTildeKinematics::lastPt() const {
 }
 
 
+Energy IILightTildeKinematics::lastPt(Lorentz5Momentum ,Lorentz5Momentum emission,Lorentz5Momentum )const {
+  return emission.perp();
+}
+
+pair<double,double> IILightTildeKinematics::zBounds(Energy pt, Energy hardPt) const {
+  if(pt>hardPt) return make_pair(0.5,0.5);
+  double root = (1.-emitterX())*sqrt(1.-sqr(pt/hardPt));
+  return make_pair(0.5*( 1.+emitterX() - root),0.5*( 1.+emitterX() + root));
+}
+
+
+double IILightTildeKinematics::lastZ() const {
+  double x = subtractionParameters()[0];
+  double v = subtractionParameters()[1];
+  return x + v;
+}
+
 // If needed, insert default implementations of virtual function defined
 // in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
 
@@ -105,4 +122,4 @@ void IILightTildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IILightTildeKinematics,TildeKinematics>
-describeHerwigIILightTildeKinematics("Herwig::IILightTildeKinematics", "HwMatchbox.so");
+describeHerwigIILightTildeKinematics("Herwig::IILightTildeKinematics", "Herwig.so");

@@ -11,10 +11,10 @@
 #include "ThePEG/Interface/RefVector.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
-#include "Herwig++/Decay/General/GeneralThreeBodyDecayer.h"
-#include "Herwig++/Decay/DecayPhaseSpaceMode.h"
-#include "Herwig++/PDT/ThreeBodyAllOnCalculator.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
+#include "Herwig/Decay/General/GeneralThreeBodyDecayer.h"
+#include "Herwig/Decay/DecayPhaseSpaceMode.h"
+#include "Herwig/PDT/ThreeBodyAllOnCalculator.h"
 #include "ThePEG/PDT/StandardMatchers.h"
 #include "ThePEG/Interface/Switch.h"
 #include "ThePEG/Utilities/Throw.h"
@@ -282,15 +282,6 @@ createDecayMode(vector<NBDiagram> & mode,
   }
   tag += ";";
   tDMPtr dm = generator()->findDecayMode(tag);
-  if( decayConstructor()->disableDecayMode(tag) ) {
-    // If mode alread exists, ie has been read from file, 
-    // disable it
-    if( dm ) {
-      generator()->preinitInterface(dm, "BranchingRatio", "set", "0.0");
-      generator()->preinitInterface(dm, "OnOff", "set", "Off");
-    }
-    return;
-  }
   // create mode if needed
   if( createDecayModes() && (!dm || inpart->id() == ParticleID::h0) ) {
     // create the decayer
@@ -304,7 +295,7 @@ createDecayMode(vector<NBDiagram> & mode,
     if(ndm) {
       generator()->preinitInterface(ndm, "Decayer", "set",
  				    decayer->fullName());
-      generator()->preinitInterface(ndm, "OnOff", "set", "On");
+      generator()->preinitInterface(ndm, "Active", "set", "Yes");
       if(!ndm->decayer()) {
 	generator()->log() << "Can't set the decayer for " 
 			   << tag << " so mode not created \n";
@@ -347,13 +338,30 @@ createDecayMode(vector<NBDiagram> & mode,
     if((dm->decayer()->fullName()).find("Mambo") != string::npos) {
       // create the decayer
       GeneralThreeBodyDecayerPtr decayer = createDecayer(diagrams,inter,symfac);
-      if(!decayer) {
-	if(Debug::level > 1 ) generator()->log() << "Can't create the decayer for " 
-						 << tag << " so mode not created\n";
-	return;
+      if(decayer) {
+	generator()->preinitInterface(dm, "Decayer", "set", 
+				      decayer->fullName());
+	// check not zero
+	OrderedParticles::const_iterator pit=outgoing.begin();
+	tPDPtr pa = *pit; ++pit;
+	tPDPtr pb = *pit; ++pit;
+	tPDPtr pc = *pit;
+	Energy width = 
+	  decayer->partialWidth(make_pair(inpart,inpart->mass()),
+				make_pair(pa,pa->mass()) , 
+				make_pair(pb,pb->mass()) , 
+				make_pair(pc,pc->mass()));
+	if(width/(dm->brat()*inpart->width())<1e-10) {
+	  string message = "Herwig calculation of the partial width for the decay mode "
+	    + inpart->PDGName() + " -> " + pa->PDGName() + " " + pb->PDGName() + " " + pc->PDGName()
+	    + " is zero.\n This will cause problems with the calculation of"
+	    + " spin correlations.\n It is probably due to inconsistent parameters"
+	    + " and decay modes being passed to Herwig via the SLHA file.\n"
+	    + " Zeroing the branching ratio for this mode.";
+	  setBranchingRatio(dm,ZERO);
+	  generator()->logWarning(NBodyDecayConstructorError(message,Exception::warning));
+	}
       }
-      generator()->preinitInterface(dm, "Decayer", "set", 
-				    decayer->fullName());
       // incoming particle is now unstable
       inpart->stable(false);
     }

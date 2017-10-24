@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ClusterDecayer.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// ClusterDecayer.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_ClusterDecayer_H
@@ -117,7 +117,7 @@ private:
   /** Compute the positions of the new hadrons based on the clusters position.
    *
    *  This method calculates the positions of the children hadrons by a
-   *  call to Herwig::Smearing::gaussianSmearing with width inversely 
+   *  call to ThePEG::RandomGenerator::rndGaussTwoNumbers with width inversely 
    *  proportional to the cluster mass, around the parent cluster position.
    */
   void calculatePositions( const Lorentz5Momentum &, const LorentzPoint &, 

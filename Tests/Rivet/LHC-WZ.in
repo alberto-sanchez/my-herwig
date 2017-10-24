@@ -1,37 +1,36 @@
 ##################################################
-# Rivet analyses at the Z pole
+# Technical parameters for this run
 ##################################################
-read LHCBase.in
+cd /Herwig/Generators
+set LHCGenerator:NumberOfEvents 10000000
+set LHCGenerator:RandomNumberGenerator:Seed 31122001
+set LHCGenerator:PrintEvent 10
+set LHCGenerator:MaxErrors 1000000
+set LHCGenerator:EventHandler:StatLevel Full
+##################################################
+#  Create the Herwig analysis
+##################################################
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert LHCGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+set /Herwig/Analysis/RivetAnalysis:Debug No
 
-##################################################
-#  Use the q qbar matrix element
-##################################################
+mv /Herwig/Generators/LHCGenerator /Herwig/Generators/EventGenerator
 cd /Herwig/MatrixElements
-# Drell-Yan Z/gamma
+set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 7000.0
 insert SimpleQCD:MatrixElements[0] MEPP2VV
 set MEPP2VV:Process WZ
-
 do /Herwig/Particles/W+:SelectDecayModes /Herwig/Particles/W+/W+->nu_e,e+; /Herwig/Particles/W+/W+->nu_mu,mu+;
 do /Herwig/Particles/W-:SelectDecayModes /Herwig/Particles/W-/W-->nu_ebar,e-; /Herwig/Particles/W-/W-->nu_mubar,mu-;
 do /Herwig/Particles/Z0:SelectDecayModes /Herwig/Particles/Z0/Z0->e-,e+; /Herwig/Particles/Z0/Z0->mu-,mu+;
-
-# No QED radiation
-erase /Herwig/EventHandlers/LHCHandler:PostSubProcessHandlers 0
-
-# reweight for the branching ratios
 create Herwig::BranchingRatioReweighter /Herwig/Generators/BRReweighter
-insert /Herwig/EventHandlers/LHCHandler:PostHadronizationHandlers 0 /Herwig/Generators/BRReweighter
+insert /Herwig/Generators/EventGenerator:EventHandler:PostHadronizationHandlers 0 /Herwig/Generators/BRReweighter
 
 
-##################################################
-# select the analyses
-##################################################
-
-# general analysis
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ATLAS_2011_I954993
+cd /Herwig/Generators
+read LHC/LHC-WZ.in
 
 ##################################################
-# Save run for later usage with 'Herwig++ run'
+# Save run for later usage with 'Herwig run'
 ##################################################
 cd /Herwig/Generators
-saverun LHC-WZ LHCGenerator
+saverun LHC-WZ EventGenerator

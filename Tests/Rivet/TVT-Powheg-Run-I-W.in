@@ -1,37 +1,51 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at the Z pole
+# Technical parameters for this run
 ##################################################
-read TVTBase-Powheg.in
+read snippets/PPCollider.in
+cd /Herwig/Generators
+set EventGenerator:MaxErrors 1000000
+set /Herwig/Decays/DecayHandler:MaxLifeTime 10*mm
+##################################################
+#  Need to use an NLO PDF
+##################################################
+set /Herwig/Particles/p+:PDF    /Herwig/Partons/HardNLOPDF
+set /Herwig/Particles/pbar-:PDF /Herwig/Partons/HardNLOPDF
+set /Herwig/Shower/ShowerHandler:PDFA /Herwig/Partons/ShowerLOPDF
+set /Herwig/Shower/ShowerHandler:PDFB /Herwig/Partons/ShowerLOPDF
+set /Herwig/Partons/MPIExtractor:FirstPDF  /Herwig/Partons/MPIPDF
+set /Herwig/Partons/MPIExtractor:SecondPDF /Herwig/Partons/MPIPDF
+set /Herwig/Partons/PPExtractor:FirstPDF  /Herwig/Partons/HardNLOPDF
+set /Herwig/Partons/PPExtractor:SecondPDF /Herwig/Partons/HardNLOPDF
 
 ##################################################
-# LEP physics parameters (override defaults) 
+#  Setup the POWHEG shower
+##################################################
+cd /Herwig/Shower
+set ShowerHandler:IntrinsicPtGaussian 1.9*GeV
+set ShowerHandler:HardEmission POWHEG
+read Matchbox/Powheg-Default-ShowerAlphaSTune.in
+
+##################################################
+#  Create the Herwig analysis
 ##################################################
 cd /Herwig/Generators
-set LHCGenerator:EventHandler:LuminosityFunction:Energy 1800.0
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
 
-##################################################
-#  Use the q qbar matrix element
-##################################################
 cd /Herwig/MatrixElements
-# Drell-Yan W
-insert SimpleQCD:MatrixElements[0] PowhegMEqq2W2ff
+set /Herwig/Generators/EventGenerator:EventHandler:BeamB /Herwig/Particles/pbar-
+set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 1800.0
+insert SubProcess:MatrixElements[0] PowhegMEqq2W2ff
 set PowhegMEqq2W2ff:Process Electron
 
-# No QED radiation
-erase /Herwig/EventHandlers/LHCHandler:PostSubProcessHandlers 0
+
+cd /Herwig/Generators
+
+read TVT/TVT-Run-I-W.in
 
 ##################################################
-# select the analyses
-##################################################
-# CDF Run I W pT corrections and normalization are CRAP
-#insert /Herwig/Analysis/RivetAnalysis:Analyses 0 CDF_1991_S2313472
-# D0 Run I W pT corrections and normalization are CRAP
-#insert /Herwig/Analysis/RivetAnalysis:Analyses 0  D0_1998_S3711838
-# D0 Run I W pT
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0  D0_2000_S4480767
-
-##################################################
-# Save run for later usage with 'Herwig++ run'
+# Save run for later usage with 'Herwig run'
 ##################################################
 cd /Herwig/Generators
-saverun TVT-Powheg-Run-I-W LHCGenerator
+saverun TVT-Powheg-Run-I-W EventGenerator

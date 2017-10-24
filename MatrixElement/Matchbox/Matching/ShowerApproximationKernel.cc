@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ShowerApproximationKernel.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ShowerApproximationKernel.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -28,7 +28,8 @@ using namespace Herwig;
 
 ShowerApproximationKernel::ShowerApproximationKernel() 
   : thePresampling(false), thePresamplingPoints(10000), 
-    theMaxTry(100000), sampler(0) {}
+    theMaxTry(100000), theFreezeGrid(500000),
+    sampler(0), theDoCompensate(false) {}
 
 ShowerApproximationKernel::~ShowerApproximationKernel() {}
 
@@ -108,14 +109,19 @@ double ShowerApproximationKernel::evaluate(const vector<double>& r) {
   if ( !dipole()->generateKinematics(&r[nDimBorn()]) )
     return 0.;
 
-  double jac = dipole()->invertedTildeKinematics()->jacobian();
+  double jac = 
+    showerApproximation()->showerInvertedTildeKinematics() ?
+    showerApproximation()->showerInvertedTildeKinematics()->jacobian() :
+    dipole()->invertedTildeKinematics()->jacobian();
 
   showerApproximation()->setBornXComb(bornXComb());
   showerApproximation()->setRealXComb(realXComb());
   showerApproximation()->setTildeXCombs(tildeXCombs());
   showerApproximation()->setDipole(dipole());
+  showerApproximation()->checkCutoff();
+  showerApproximation()->getShowerVariables();
 
-  if ( !showerApproximation()->isInShowerPhasespace() )
+  if ( !dipole()->isInShowerPhasespace() )
     return 0.;
 
   return showerApproximation()->me2() * jac;
@@ -129,6 +135,8 @@ double ShowerApproximationKernel::generate() {
     sampler = new ExponentialGenerator();
     sampler->sampling_parameters().maxtry = maxtry();
     sampler->sampling_parameters().presampling_points = presamplingPoints();
+    sampler->sampling_parameters().freeze_grid = freezeGrid();
+    sampler->docompensate(theDoCompensate);
     sampler->function(this);
     sampler->initialize();
 
@@ -142,9 +150,9 @@ double ShowerApproximationKernel::generate() {
     } catch (exsample::exponential_regenerate&) {
       continue;
     } catch (exsample::hit_and_miss_maxtry&) {
-      throw Veto();
+      throw MaxTryException();
     } catch (exsample::selection_maxtry&) {
-      throw Veto();
+      throw MaxTryException();
     } 
     break;
   }
@@ -160,10 +168,10 @@ double ShowerApproximationKernel::generate() {
 void ShowerApproximationKernel::persistentOutput(PersistentOStream & os) const {
   os << theDipole << theShowerApproximation << theBornXComb 
      << theRealXComb << theTildeXCombs << thePresampling 
-     << thePresamplingPoints << theMaxTry << theFlags 
+     << thePresamplingPoints << theMaxTry << theFreezeGrid << theFlags 
      << theSupport << theShowerApproximationGenerator 
      << theLastParameterPoint << theLastBornPoint
-     << (sampler ? true : false);
+     << (sampler ? true : false) << theDoCompensate;
   if ( sampler )
     sampler->put(os);
 }
@@ -172,10 +180,10 @@ void ShowerApproximationKernel::persistentInput(PersistentIStream & is, int) {
   bool haveSampler;
   is >> theDipole >> theShowerApproximation >> theBornXComb 
      >> theRealXComb >> theTildeXCombs >> thePresampling 
-     >> thePresamplingPoints >> theMaxTry >> theFlags 
+     >> thePresamplingPoints >> theMaxTry >> theFreezeGrid >> theFlags 
      >> theSupport >> theShowerApproximationGenerator 
      >> theLastParameterPoint >> theLastBornPoint
-     >> haveSampler; 
+     >> haveSampler >> theDoCompensate; 
   if ( haveSampler ) {
     sampler = new ExponentialGenerator();
     sampler->get(is);
@@ -190,7 +198,7 @@ void ShowerApproximationKernel::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<ShowerApproximationKernel,HandlerBase>
-  describeHerwigShowerApproximationKernel("Herwig::ShowerApproximationKernel", "HwMatchbox.so");
+  describeHerwigShowerApproximationKernel("Herwig::ShowerApproximationKernel", "Herwig.so");
 
 void ShowerApproximationKernel::Init() {
 

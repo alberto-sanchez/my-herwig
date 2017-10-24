@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// GenericOLPAmplitude.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// GenericOLPAmplitude.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -53,7 +53,7 @@ LorentzVector<Complex> GenericOLPAmplitude::plusPolarization(const Lorentz5Momen
 void GenericOLPAmplitude::evalSubProcess() const {
 
   double units = pow(lastSHat()/GeV2,mePartonData().size()-4.);
-  fillOLPMomenta(lastXComb().meMomenta());
+  fillOLPMomenta(lastXComb().meMomenta(),mePartonData(),reshuffleMasses());
   //double as = SM().alphaS();
   //double scale = sqrt(mu2()/GeV2);
 
@@ -66,7 +66,7 @@ void GenericOLPAmplitude::evalSubProcess() const {
 void GenericOLPAmplitude::evalColourCorrelator(pair<int,int> ij) const {
 
   double units = pow(lastSHat()/GeV2,mePartonData().size()-4.);
-  fillOLPMomenta(lastXComb().meMomenta());
+  fillOLPMomenta(lastXComb().meMomenta(),mePartonData(),reshuffleMasses());
   //double as = SM().alphaS();
   //double scale = sqrt(mu2()/GeV2);
 
@@ -77,7 +77,7 @@ void GenericOLPAmplitude::evalColourCorrelator(pair<int,int> ij) const {
 void GenericOLPAmplitude::evalSpinColourCorrelator(pair<int,int> ij) const {
 
   double units = pow(lastSHat()/GeV2,mePartonData().size()-4.);
-  fillOLPMomenta(lastXComb().meMomenta());
+  fillOLPMomenta(lastXComb().meMomenta(),mePartonData(),reshuffleMasses());
   //double as = SM().alphaS();
   //double scale = sqrt(mu2()/GeV2);
 
@@ -101,7 +101,7 @@ void GenericOLPAmplitude::persistentInput(PersistentIStream &, int) {}
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<GenericOLPAmplitude,MatchboxOLPME>
-  describeHerwigGenericOLPAmplitude("Herwig::GenericOLPAmplitude", "HwMatchbox.so");
+  describeHerwigGenericOLPAmplitude("Herwig::GenericOLPAmplitude", "Herwig.so");
 
 void GenericOLPAmplitude::Init() {
 

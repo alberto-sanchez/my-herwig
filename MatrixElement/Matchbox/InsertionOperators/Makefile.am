@@ -1,6 +1,4 @@
-if WANT_DIPOLE
 noinst_LTLIBRARIES = libHwMatchboxInsertionOperators.la
-endif
 
 libHwMatchboxInsertionOperators_la_SOURCES = \
 DipoleIOperator.cc \
@@ -9,5 +7,8 @@ DipolePKOperator.cc \
 DipolePKOperator.h \
 DipoleMIOperator.cc \
 DipoleMIOperator.h \
+DipoleMPKOperator.cc \
+DipoleMPKOperator.h \
 MatchboxInsertionOperator.cc \
-MatchboxInsertionOperator.h
+MatchboxInsertionOperator.h \
+MatchboxInsertionOperator.fh

@@ -45,6 +45,7 @@ SMPARTICLES = {
 particleT = Template(
 """
 create ThePEG::ParticleData $name
+# values set to 999999 are recalculated later from other model parameters
 setup $name $pdg_code $name $mass $width $wcut $ctau $charge $color $spin 0
 """
 )
@@ -76,7 +77,7 @@ class ParticleConverter:
                 self.mass = self.mass.real
             except:
                 pass
-            self.mass = abs(self.mass)
+            self.mass = 999999. # abs(self.mass)
 
         hbarc = 197.3269631e-15 # GeV mm (I hope ;-) )
         self.width = parmsubs[str(p.width)]
@@ -94,8 +95,9 @@ class ParticleConverter:
 
             self.width = '${%s}' % self.width
         else:
-            self.ctau = (hbarc / self.width) if self.width != 0 else 0
-            self.wcut = 10.0 * self.width
+            self.ctau = 999999. # (hbarc / self.width) if self.width != 0 else 0
+            self.wcut = 999999. #10.0 * self.width
+            self.width = 999999. # was blank line before
 
         self.charge = int(3 * p.charge)
 
@@ -104,10 +106,11 @@ class ParticleConverter:
 
 
 
-def thepeg_particles(FR,parameters,modelname,modelparameters):
+def thepeg_particles(FR,parameters,modelname,modelparameters,forbidden_names):
     plist = []
     antis = {}
     names = []
+    splittings = []
     for p in FR.all_particles:
         if p.spin == -1:
             continue
@@ -134,14 +137,17 @@ def thepeg_particles(FR,parameters,modelname,modelparameters):
 set /Herwig/Particles/h0:Mass_generator NULL
 set /Herwig/Particles/h0:Width_generator NULL
 rm /Herwig/Masses/HiggsMass
-rm /Herwig/Widths/HiggsWidth
+rm /Herwig/Widths/hWidth
 """
 )
+        if p.name in forbidden_names:
+            print 'RENAMING PARTICLE',p.name,'as ',p.name+'_UFO'
+            p.name +="_UFO"
+
         subs = ParticleConverter(p,parameters,modelparameters).subs()
         plist.append( particleT.substitute(subs) )
 
         pdg, name = subs['pdg_code'],  subs['name']
-
         names.append(name)
 
         if -pdg in antis:
@@ -149,6 +155,7 @@ rm /Herwig/Widths/HiggsWidth
 
         else:
             plist.append( 'insert /Herwig/NewPhysics/NewModel:DecayParticles 0 %s\n' % name )
+            plist.append( 'insert /Herwig/Shower/ShowerHandler:DecayInShower 0 %s #  %s' % (pdg, name) )
             antis[pdg] = name
             selfconjugate = 1
 
@@ -174,7 +181,7 @@ rm /Herwig/Widths/HiggsWidth
             if p.color in [3,6,8]: # which colors?
                 splitname = '{name}SplitFn'.format(name=p.name)
                 sudname = '{name}Sudakov'.format(name=p.name)
-                plist.append(
+                splittings.append(
 """
 create Herwig::{s}{s}OneSplitFn {name}
 set {name}:InteractionType QCD
@@ -195,5 +202,4 @@ insert /Herwig/{ModelName}/V_GenericHPP:Bosons 0 {pname}
 insert /Herwig/{ModelName}/V_GenericHGG:Bosons 0 {pname}
 """.format(pname=p.name, ModelName=modelname)
             )
-
-    return ''.join(plist), names
+    return ''.join(plist)+''.join(splittings), names

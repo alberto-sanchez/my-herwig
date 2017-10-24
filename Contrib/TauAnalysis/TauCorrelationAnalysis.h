@@ -7,7 +7,7 @@
 
 #include "ThePEG/Repository/CurrentGenerator.h"
 #include "ThePEG/Handlers/AnalysisHandler.h"
-#include "Herwig++/Utilities/Histogram.h"
+#include "Herwig/Utilities/Histogram.h"
 
 namespace Herwig {
 
@@ -117,12 +117,12 @@ protected:
    * Analyze the given particle for correlations with pi.
    * @param particle pointer to the particle to be analyzed.
    */
-  void analyzePi(tPPtr particle);
+  void analyzePi(tPPtr particle, ParticleVector children);
   /**
    * Analyze the given particle for correlations with rho.
    * @param particle pointer to the particle to be analyzed.
    */
-  void analyzeRho(tPPtr particle);
+  void analyzeRho(tPPtr particle, ParticleVector children);
   //@}
 
 private:

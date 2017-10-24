@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FIggxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FIggxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,10 +20,10 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FILightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/FILightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FILightTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/FILightInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -46,7 +46,7 @@ bool FIggxDipole::canHandle(const cPDVector& partons,
     emitter > 1 && spectator < 2 &&
     partons[emission]->id() == ParticleID::g &&
     partons[emitter]->id() == ParticleID::g &&
-    partons[spectator]->mass() == ZERO;
+    partons[spectator]->hardProcessMass() == ZERO;
 }
 
 double FIggxDipole::me2Avg(double ccme2) const {
@@ -56,13 +56,15 @@ double FIggxDipole::me2Avg(double ccme2) const {
 
   double x = subtractionParameters()[0];
   double z = subtractionParameters()[1];
-
+  
   Energy2 prop = 
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
 
-
-  double res = 1./((1.-z)+(1.-x))+1./(z+(1.-x))-2.+z*(1.-z)+(1.-x)*(1.+x*z*(1.-z));
+  double res = 
+    1./((1.-z)+(1.-x)) + 1./(z+(1.-x)) - 2.+z*(1.-z) 
+    + (1.-x)*(1.+x*z*(1.-z))
+    ;
 
   res *= 16.*Constants::pi*SM().Nc()*(realEmissionME()->lastXComb().lastSHat())*
     (underlyingBornME()->lastXComb().lastAlphaS())/prop;
@@ -88,12 +90,18 @@ double FIggxDipole::me2() const {
 
   double x = subtractionParameters()[0];
   double z = subtractionParameters()[1];
+  
+  if ( alpha() < (1.-x) )
+    return 0.0;
 
   Energy2 prop = 
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
 
-  double diag = 1./(1.-z+1.-x)+1./(z+1.-x)-2.+(1.-x)*(1.+x*z*(1.-z));
+  double diag = 
+    1./(1.-z+1.-x) + 1./(z+1.-x) - 2. 
+    //+ (1.-x)*(1.+x*z*(1.-z))
+    ;
   Lorentz5Momentum pc = 
     z*realEmissionME()->lastXComb().meMomenta()[realEmitter()] -
     (1.-z)*realEmissionME()->lastXComb().meMomenta()[realEmission()];
@@ -140,4 +148,4 @@ void FIggxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FIggxDipole,SubtractionDipole>
-describeHerwigFIggxDipole("Herwig::FIggxDipole", "HwMatchbox.so");
+describeHerwigFIggxDipole("Herwig::FIggxDipole", "Herwig.so");

@@ -1,3 +1,5 @@
+# -*- ThePEG-repository -*-
+
 ##################################################
 # Common setup for Leptoquark models
 #
@@ -55,8 +57,8 @@ mkdir /Herwig/NewPhysics/TTbA
 cd /Herwig/NewPhysics/TTbA
 create Herwig::TTbAModel Model HwTTbAModel.so
 # SM couplings
-set Model:QCD/RunningAlphaS /Herwig/AlphaS
-set Model:EW/RunningAlphaEM /Herwig/AlphaEM
+set Model:QCD/RunningAlphaS /Herwig/Couplings/NLOAlphaS
+set Model:EW/RunningAlphaEM /Herwig/Couplings/AlphaEM
 set Model:EW/CKM /Herwig/CKM
 set Model:RunningMass /Herwig/RunningMass
 
@@ -157,6 +159,4 @@ set TTbA/Model:ModelGenerator NewModel
 #
 ###################################################
 cd /Herwig/Generators
-set LEPGenerator:StandardModelParameters  /Herwig/NewPhysics/TTbA/Model
-set LHCGenerator:StandardModelParameters  /Herwig/NewPhysics/TTbA/Model
-
+set EventGenerator:StandardModelParameters  /Herwig/NewPhysics/TTbA/Model

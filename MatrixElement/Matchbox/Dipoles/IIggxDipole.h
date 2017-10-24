@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IIggxDipole.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IIggxDipole.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_IIggxDipole_H
@@ -12,7 +12,7 @@
 // This is the declaration of the IIggxDipole class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
 
 namespace Herwig {
 
@@ -45,12 +45,45 @@ public:
 public:
 
   /**
+   * Return true, if this dipole can possibly handle the indicated
+   * emitter.
+   */
+  virtual bool canHandleEmitter(const cPDVector& partons, int emitter) const {
+    return emitter < 2 && partons[emitter]->id() == ParticleID::g;
+  }
+
+  /**
+   * Return true, if this dipole can possibly handle the indicated
+   * splitting.
+   */
+  virtual bool canHandleSplitting(const cPDVector& partons, int emitter, int emission) const {
+    return canHandleEmitter(partons,emitter) && partons[emission]->id() == ParticleID::g;
+  }
+
+  /**
+   * Return true, if this dipole can possibly handle the indicated
+   * spectator.
+   */
+  virtual bool canHandleSpectator(const cPDVector& partons, int spectator) const {
+    return spectator < 2 && partons[spectator]->coloured();
+  }
+
+  /**
    * Return true, if this dipole applies to the selected
    * configuration.
    */
   virtual bool canHandle(const cPDVector& partons,
 			 int emitter, int emission, int spectator) const;
+  /**
+   *  How to sample the z-distribution.
+   *  FlatZ = 1
+   *  OneOverZ = 2
+   *  OneOverOneMinusZ = 3
+   *  OneOverZOneMinusZ = 4
+   */
 
+  virtual int samplingZ() const {return 4;}
+  
   /**
    * Return the matrix element for the kinematical configuation
    * previously provided by the last call to setKinematics(), suitably

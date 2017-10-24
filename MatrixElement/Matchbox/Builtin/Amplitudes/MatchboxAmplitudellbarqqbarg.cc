@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudellbarqqbarg.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudellbarqqbarg.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -40,10 +40,10 @@ IBPtr MatchboxAmplitudellbarqqbarg::fullclone() const {
 
 void MatchboxAmplitudellbarqqbarg::doinit() {
   MatchboxZGammaAmplitude::doinit();
-  MZ = getParticleData(ParticleID::Z0)->mass();
-  GZ = getParticleData(ParticleID::Z0)->width();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MZ = getParticleData(ParticleID::Z0)->hardProcessMass();
+  GZ = getParticleData(ParticleID::Z0)->hardProcessWidth();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   CA = SM().Nc();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   nPoints(5);
@@ -51,10 +51,10 @@ void MatchboxAmplitudellbarqqbarg::doinit() {
 
 void MatchboxAmplitudellbarqqbarg::doinitrun() {
   MatchboxZGammaAmplitude::doinitrun();
-  MZ = getParticleData(ParticleID::Z0)->mass();
-  GZ = getParticleData(ParticleID::Z0)->width();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MZ = getParticleData(ParticleID::Z0)->hardProcessMass();
+  GZ = getParticleData(ParticleID::Z0)->hardProcessWidth();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   CA = SM().Nc();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   nPoints(5);
@@ -88,18 +88,19 @@ bool MatchboxAmplitudellbarqqbarg::canHandle(const PDVector& proc) const {
   if ( antiLepton == xproc.end() )
     return false;
   xproc.erase(antiLepton);
+
   PDVector::iterator quark = xproc.begin();
   long quarkId = 0;
   for ( ; quark != xproc.end(); ++quark )
-    if ( abs((**quark).id()) < 6 &&
-	 (**quark).id() > 0 &&
-	 (**quark).mass() == ZERO ) {
+    if ( abs((**quark).id()) < 7 &&
+	 (**quark).id() > 0 ) {
       break;
     }
   if ( quark == xproc.end() )
     return false;
   quarkId = (**quark).id();
   xproc.erase(quark);
+
   PDVector::iterator antiQuark = xproc.begin();
   for ( ; antiQuark != xproc.end(); ++antiQuark )
     if ( (**antiQuark).id() == -quarkId ) {
@@ -113,6 +114,7 @@ bool MatchboxAmplitudellbarqqbarg::canHandle(const PDVector& proc) const {
   return xproc[0]->id() == 21;
 }
 
+
 void MatchboxAmplitudellbarqqbarg::prepareAmplitudes(Ptr<MatchboxMEBase>::tcptr me) {
 
   if ( !calculateTreeAmplitudes() ) {
@@ -125,19 +127,21 @@ void MatchboxAmplitudellbarqqbarg::prepareAmplitudes(Ptr<MatchboxMEBase>::tcptr 
   setupLeptons(0,amplitudeMomentum(0),
 	       1,amplitudeMomentum(1));
 
-  momentum(2,amplitudeMomentum(2));
-  momentum(3,amplitudeMomentum(3));
+  setupQuarks(2,amplitudeMomentum(2),
+	      3,amplitudeMomentum(3));
+
   momentum(4,amplitudeMomentum(4));
 
   MatchboxZGammaAmplitude::prepareAmplitudes(me);
 
 }
 
+
 Complex MatchboxAmplitudellbarqqbarg::evaluate(size_t, const vector<int>& hel, Complex& largeN) {
 
   assert(nPoints() == 5);
 
-  if ( abs(hel[2]+hel[3]) != 2 ) {
+  if ( abs(hel[2])+abs(hel[3]) != 2 ) {
     largeN = 0.;
     return 0.;
   }
@@ -147,14 +151,15 @@ Complex MatchboxAmplitudellbarqqbarg::evaluate(size_t, const vector<int>& hel, C
   const LorentzVector<Complex>& leptonRight
     = llbarRightCurrent(0,hel[0],1,hel[1]); 
 
-  Complex LL =
-    hel[2] ==  1 ? leptonLeft.dot( qqbargLeftCurrent (2,hel[2],3,hel[3],4,hel[4]))  : 0.;
-  Complex RL =
-    hel[2] ==  1 ? leptonRight.dot(qqbargLeftCurrent (2,hel[2],3,hel[3],4,hel[4]))  : 0.;
-  Complex LR =
-    hel[2] == -1 ? leptonLeft.dot( qqbargRightCurrent(2,hel[2],3,hel[3],4,hel[4]))  : 0.;
-  Complex RR =
-    hel[2] == -1 ? leptonRight.dot(qqbargRightCurrent(2,hel[2],3,hel[3],4,hel[4]))  : 0.;
+  const LorentzVector<Complex>& quarkLeft
+    = qqbargLeftCurrent(2,hel[2],3,hel[3],4,hel[4]);
+  const LorentzVector<Complex>& quarkRight
+    = qqbargRightCurrent(2,hel[2],3,hel[3],4,hel[4]);
+
+  Complex LL = leptonLeft.dot( quarkLeft );
+  Complex RL = leptonRight.dot( quarkLeft );
+  Complex LR = leptonLeft.dot( quarkRight );
+  Complex RR = leptonRight.dot( quarkRight );
 
   double bProp = (amplitudeMomentum(0)+amplitudeMomentum(1)).m2()/lastSHat();
 
@@ -171,13 +176,14 @@ Complex MatchboxAmplitudellbarqqbarg::evaluate(size_t, const vector<int>& hel, C
        standardModel()->re()*(up ? standardModel()->lu() : standardModel()->ld())*RL +
        standardModel()->le()*(up ? standardModel()->ru() : standardModel()->rd())*LR +
        standardModel()->re()*(up ? standardModel()->ru() : standardModel()->rd())*RR)/
-      Complex(bProp-sqr(MZ)/lastSHat(),MZ*GZ/lastSHat());
+      Complex(bProp-sqr(MZ)/lastSHat(),MZ*GZ/lastSHat()); 
 
-  Complex res = 4.*Constants::pi*SM().alphaEM()*sqrt(4.*Constants::pi*SM().alphaS())*(gamma+Z);
+  Complex res = 4.*Constants::pi*SM().alphaEMMZ()*sqrt(4.*Constants::pi*SM().alphaS())*(gamma+Z);
   largeN = res;
   return res;
 
 }
+
 
 Complex MatchboxAmplitudellbarqqbarg::evaluateOneLoop(size_t, const vector<int>& hel) {
 
@@ -218,7 +224,7 @@ Complex MatchboxAmplitudellbarqqbarg::evaluateOneLoop(size_t, const vector<int>&
 
   Complex res = 
     (SM().alphaS()/(2.*Constants::pi))*
-    4.*Constants::pi*SM().alphaEM()*sqrt(4.*Constants::pi*SM().alphaS())*(gamma+Z);
+    4.*Constants::pi*SM().alphaEMMZ()*sqrt(4.*Constants::pi*SM().alphaS())*(gamma+Z);
   return res;
 
 }
@@ -238,7 +244,7 @@ void MatchboxAmplitudellbarqqbarg::persistentInput(PersistentIStream &, int) {}
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxAmplitudellbarqqbarg,MatchboxZGammaAmplitude>
-  describeHerwigMatchboxAmplitudellbarqqbarg("Herwig::MatchboxAmplitudellbarqqbarg", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudellbarqqbarg("Herwig::MatchboxAmplitudellbarqqbarg", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudellbarqqbarg::Init() {
 

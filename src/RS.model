@@ -1,3 +1,4 @@
+# -*- ThePEG-repository -*-
 ##################################################
 # Common setup for Randall-Sundrum models
 #
@@ -24,8 +25,8 @@ mkdir /Herwig/NewPhysics/RS
 cd /Herwig/NewPhysics/RS
 create Herwig::RSModel Model HwRSModel.so
 # SM couplings
-set Model:QCD/RunningAlphaS /Herwig/AlphaS
-set Model:EW/RunningAlphaEM /Herwig/AlphaEM
+set Model:QCD/RunningAlphaS /Herwig/Couplings/NLOAlphaS
+set Model:EW/RunningAlphaEM /Herwig/Couplings/AlphaEM
 set Model:EW/CKM /Herwig/CKM
 set Model:RunningMass /Herwig/RunningMass
 ###################################################
@@ -90,5 +91,4 @@ set RS/Model:ModelGenerator NewModel
 #
 ###################################################
 cd /Herwig/Generators
-set LEPGenerator:StandardModelParameters  /Herwig/NewPhysics/RS/Model
-set LHCGenerator:StandardModelParameters  /Herwig/NewPhysics/RS/Model
+set EventGenerator:StandardModelParameters  /Herwig/NewPhysics/RS/Model

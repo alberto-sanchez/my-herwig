@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SimpleColourBasis2.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// SimpleColourBasis2.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -81,7 +81,7 @@ size_t SimpleColourBasis2::prepareBasis(const vector<PDT::Colour>& basis) {
     return 4;
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis2::prepareBasis(): Cannot handle colour configuration" << Exception::runerror;
 
   return 0;
 
@@ -1359,7 +1359,7 @@ double SimpleColourBasis2::scalarProduct(size_t a, size_t b,
 
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis2::scalarProduct(): Cannot handle colour configuration" << Exception::runerror;
 
 }
 
@@ -1519,7 +1519,7 @@ double SimpleColourBasis2::tMatrixElement(size_t i, size_t a,
     return 0.;
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis2::tMatrixElement(): Cannot handle colour configuration" << Exception::runerror;
 
   return 0.;
 
@@ -1998,7 +1998,7 @@ bool SimpleColourBasis2::colourConnected(const cPDVector& sub,
 	(idColoured == 4 && idAntiColoured == 3)));
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis2::colourConnected(): Cannot handle colour configuration" << Exception::runerror;
 
   return false;
 
@@ -2799,7 +2799,7 @@ map<size_t,vector<vector<size_t> > > SimpleColourBasis2::basisList(const vector<
     return blist;
   }
 
-  throw Exception() << "Cannot handle colour configuration" << Exception::abortnow;
+  throw Exception() << "SimpleColourBasis2::basisList(): Cannot handle colour configuration" << Exception::runerror;
 
   return blist;
 
@@ -2851,7 +2851,7 @@ void SimpleColourBasis2::persistentInput(PersistentIStream &, int) {}
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<SimpleColourBasis2,ColourBasis>
-  describeHerwigSimpleColourBasis2("Herwig::SimpleColourBasis2", "HwMatchbox.so");
+  describeHerwigSimpleColourBasis2("Herwig::SimpleColourBasis2", "Herwig.so");
 
 void SimpleColourBasis2::Init() {
 

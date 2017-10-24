@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// PScalarVectorFermionsDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// PScalarVectorFermionsDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -22,7 +22,8 @@
 #include "ThePEG/Helicity/WaveFunction/SpinorWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorBarWaveFunction.h"
 #include "ThePEG/Helicity/epsilon.h"
-#include "Herwig++/PDT/ThreeBodyAllOn1IntegralCalculator.h"
+#include "Herwig/PDT/ThreeBodyAllOn1IntegralCalculator.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -234,12 +235,13 @@ double PScalarVectorFermionsDecayer::me2(const int,
 					 const Particle & inpart,
 					 const ParticleVector & decay,
 					 MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin0,PDT::Spin1,PDT::Spin1Half,
+					 PDT::Spin1Half)));
   // initialization
   if(meopt==Initialize) {
     ScalarWaveFunction::
       calculateWaveFunctions(_rho,const_ptr_cast<tPPtr>(&inpart),incoming);
-    ME(DecayMatrixElement(PDT::Spin0,PDT::Spin1,PDT::Spin1Half,
-			  PDT::Spin1Half));
   }
   if(meopt==Terminate) {
     // set up the spin information for the decay products
@@ -284,11 +286,11 @@ double PScalarVectorFermionsDecayer::me2(const int,
       // compute the current for this part
       eps = epsilon(decay[0]->momentum(),pff,fcurrent);
       for(ispin[1]=0;ispin[1]<3;++ispin[1]) {
-	ME()(ispin)=pre *_vectors[ispin[1]].dot(eps);
+	(*ME())(ispin)=pre *_vectors[ispin[1]].dot(eps);
       }
     }	  
   }
-  double me = ME().contract(_rho).real();
+  double me = ME()->contract(_rho).real();
 //   //code to test the matrix element against the analytic result
 //   Energy   m[4]={inpart.mass(),decay[0]->mass(),decay[1]->mass(),decay[2]->mass()};
 //   Energy2 m2[4]={m[0]*m[0],m[1]*m[1],m[2]*m[2],m[3]*m[3]};

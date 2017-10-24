@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IFMqqxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IFMqqxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,10 +20,12 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+//#include "Herwig/MatrixElement/Matchbox/Phasespace/IFLightTildeKinematics.h"
+//#include "Herwig/MatrixElement/Matchbox/Phasespace/IFLightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFMassiveTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFMassiveInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -44,12 +46,17 @@ bool IFMqqxDipole::canHandle(const cPDVector& partons,
 			    int emitter, int emission, int spectator) const {
   return
     emitter < 2 && spectator > 1 &&
-    abs(partons[emission]->id()) < 6 &&
-    abs(partons[emitter]->id()) < 6 &&
+//    abs(partons[emission]->id()) < 6 &&
+//    abs(partons[emitter]->id()) < 6 &&
+    abs(partons[emission]->id()) < 7 &&
+    abs(partons[emitter]->id()) < 7 &&
     partons[emission]->id() - partons[emitter]->id() == 0 &&
-    !(partons[emitter]->mass() == ZERO &&
-      partons[emission]->mass() == ZERO &&
-      partons[spectator]->mass() == ZERO);
+//    !(partons[emitter]->hardProcessMass() == ZERO &&
+//      partons[emission]->hardProcessMass() == ZERO &&
+//      partons[spectator]->hardProcessMass() == ZERO);
+    partons[emitter]->hardProcessMass() == ZERO &&
+    partons[emission]->hardProcessMass() == ZERO &&
+    partons[spectator]->hardProcessMass() != ZERO;
 }
 
 double IFMqqxDipole::me2Avg(double ccme2) const {
@@ -64,7 +71,7 @@ double IFMqqxDipole::me2Avg(double ccme2) const {
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
 
-  double muj2 = sqr( (realEmissionME()->lastXComb().mePartonData()[realSpectator()]->mass()) ) /
+  double muj2 = sqr( (realEmissionME()->lastXComb().mePartonData()[realSpectator()]->hardProcessMass()) ) /
     (2.* (realEmissionME()->lastXComb().meMomenta()[bornSpectator()])*
      (realEmissionME()->lastXComb().meMomenta()[realEmitter()]) );
 
@@ -144,8 +151,10 @@ void IFMqqxDipole::Init() {
   static ClassDocumentation<IFMqqxDipole> documentation
     ("IFMqqxDipole");
 
-  DipoleRepository::registerDipole<0,IFMqqxDipole,IFLightTildeKinematics,IFLightInvertedTildeKinematics>
-    ("IFMqqxDipole","IFLightTildeKinematics","IFLightInvertedTildeKinematics");
+//  DipoleRepository::registerDipole<0,IFMqqxDipole,IFLightTildeKinematics,IFLightInvertedTildeKinematics>
+//    ("IFMqqxDipole","IFLightTildeKinematics","IFLightInvertedTildeKinematics");
+  DipoleRepository::registerDipole<0,IFMqqxDipole,IFMassiveTildeKinematics,IFMassiveInvertedTildeKinematics>
+    ("IFMqqxDipole","IFMassiveTildeKinematics","IFMassiveInvertedTildeKinematics");
 
 }
 
@@ -155,4 +164,4 @@ void IFMqqxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IFMqqxDipole,SubtractionDipole>
-describeHerwigIFMqqxDipole("Herwig::IFMqqxDipole", "HwMatchbox.so");
+describeHerwigIFMqqxDipole("Herwig::IFMqqxDipole", "Herwig.so");

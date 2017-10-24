@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudellbarqqbar.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudellbarqqbar.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -40,10 +40,10 @@ IBPtr MatchboxAmplitudellbarqqbar::fullclone() const {
 
 void MatchboxAmplitudellbarqqbar::doinit() {
   MatchboxZGammaAmplitude::doinit();
-  MZ = getParticleData(ParticleID::Z0)->mass();
-  GZ = getParticleData(ParticleID::Z0)->width();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MZ = getParticleData(ParticleID::Z0)->hardProcessMass();
+  GZ = getParticleData(ParticleID::Z0)->hardProcessWidth();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   CA = SM().Nc();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   nPoints(4);
@@ -51,10 +51,10 @@ void MatchboxAmplitudellbarqqbar::doinit() {
 
 void MatchboxAmplitudellbarqqbar::doinitrun() {
   MatchboxZGammaAmplitude::doinitrun();
-  MZ = getParticleData(ParticleID::Z0)->mass();
-  GZ = getParticleData(ParticleID::Z0)->width();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MZ = getParticleData(ParticleID::Z0)->hardProcessMass();
+  GZ = getParticleData(ParticleID::Z0)->hardProcessWidth();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   CA = SM().Nc();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   nPoints(4);
@@ -88,18 +88,19 @@ bool MatchboxAmplitudellbarqqbar::canHandle(const PDVector& proc) const {
   if ( antiLepton == xproc.end() )
     return false;
   xproc.erase(antiLepton);
+
   PDVector::iterator quark = xproc.begin();
   long quarkId = 0;
   for ( ; quark != xproc.end(); ++quark )
-    if ( abs((**quark).id()) < 6 &&
-	 (**quark).id() > 0 &&
-	 (**quark).mass() == ZERO ) {
+    if ( abs((**quark).id()) < 7 &&
+	 (**quark).id() > 0 ) {
       break;
     }
   if ( quark == xproc.end() )
     return false;
   quarkId = (**quark).id();
   xproc.erase(quark);
+
   PDVector::iterator antiQuark = xproc.begin();
   for ( ; antiQuark != xproc.end(); ++antiQuark )
     if ( (**antiQuark).id() == -quarkId ) {
@@ -123,8 +124,8 @@ void MatchboxAmplitudellbarqqbar::prepareAmplitudes(Ptr<MatchboxMEBase>::tcptr m
   setupLeptons(0,amplitudeMomentum(0),
 	       1,amplitudeMomentum(1));
 
-  momentum(2,amplitudeMomentum(2));
-  momentum(3,amplitudeMomentum(3));
+  setupQuarks(2,amplitudeMomentum(2),
+ 	      3,amplitudeMomentum(3));
 
   MatchboxZGammaAmplitude::prepareAmplitudes(me);
 
@@ -132,24 +133,25 @@ void MatchboxAmplitudellbarqqbar::prepareAmplitudes(Ptr<MatchboxMEBase>::tcptr m
 
 Complex MatchboxAmplitudellbarqqbar::evaluate(size_t, const vector<int>& hel, Complex& largeN) {
 
-  if ( abs(hel[2]+hel[3]) != 2 ) {
+  if ( abs(hel[2])+abs(hel[3]) != 2 ) {
     largeN = 0.;
     return 0.;
   }
 
   const LorentzVector<Complex>& leptonLeft
-    = llbarLeftCurrent(0,hel[0],1,hel[1]); 
+    = llbarLeftCurrent(0,hel[0],1,hel[1]);
   const LorentzVector<Complex>& leptonRight
-    = llbarRightCurrent(0,hel[0],1,hel[1]); 
+    = llbarRightCurrent(0,hel[0],1,hel[1]);
 
-  Complex LL =
-    hel[2] ==  1 ? leptonLeft.dot( qqbarLeftCurrent (2,hel[2],3,hel[3]))  : 0.;
-  Complex RL =
-    hel[2] ==  1 ? leptonRight.dot(qqbarLeftCurrent (2,hel[2],3,hel[3]))  : 0.;
-  Complex LR =
-    hel[2] == -1 ? leptonLeft.dot( qqbarRightCurrent(2,hel[2],3,hel[3]))  : 0.;
-  Complex RR =
-    hel[2] == -1 ? leptonRight.dot(qqbarRightCurrent(2,hel[2],3,hel[3]))  : 0.;
+  const LorentzVector<Complex>& quarkLeft
+    = qqbarLeftCurrent(2,hel[2],3,hel[3]);
+  const LorentzVector<Complex>& quarkRight
+    = qqbarRightCurrent(2,hel[2],3,hel[3]);
+
+  Complex LL = leptonLeft.dot( quarkLeft );
+  Complex RL = leptonRight.dot( quarkLeft );
+  Complex LR = leptonLeft.dot( quarkRight );
+  Complex RR = leptonRight.dot( quarkRight );
 
   double bProp = (amplitudeMomentum(0)+amplitudeMomentum(1)).m2()/lastSHat();
 
@@ -162,13 +164,13 @@ Complex MatchboxAmplitudellbarqqbar::evaluate(size_t, const vector<int>& hel, Co
   Complex Z = 0.0;
   if ( includeZ() )
     Z = Complex(0.,-1.)*
-      (standardModel()->le()*(up ? standardModel()->lu() : standardModel()->ld())*LL +
-       standardModel()->re()*(up ? standardModel()->lu() : standardModel()->ld())*RL +
-       standardModel()->le()*(up ? standardModel()->ru() : standardModel()->rd())*LR +
+      (standardModel()->le()*(up ? standardModel()->lu() : standardModel()->ld())*LL + 
+       standardModel()->re()*(up ? standardModel()->lu() : standardModel()->ld())*RL + 
+       standardModel()->le()*(up ? standardModel()->ru() : standardModel()->rd())*LR + 
        standardModel()->re()*(up ? standardModel()->ru() : standardModel()->rd())*RR)/
       Complex(bProp-sqr(MZ)/lastSHat(),MZ*GZ/lastSHat());
-  
-  Complex res = 4.*Constants::pi*SM().alphaEM()*(gamma+Z);
+
+  Complex res = 4.*Constants::pi*SM().alphaEMMZ()*(gamma+Z);
   largeN = res;
   return res;
 
@@ -176,23 +178,20 @@ Complex MatchboxAmplitudellbarqqbar::evaluate(size_t, const vector<int>& hel, Co
 
 Complex MatchboxAmplitudellbarqqbar::evaluateOneLoop(size_t, const vector<int>& hel) {
 
-  if ( abs(hel[2]+hel[3]) != 2 ) {
-    return 0.;
-  }
-
   const LorentzVector<Complex>& leptonLeft
-    = llbarLeftCurrent(0,hel[0],1,hel[1]); 
+    = llbarLeftCurrent(0,hel[0],1,hel[1]);
   const LorentzVector<Complex>& leptonRight
-    = llbarRightCurrent(0,hel[0],1,hel[1]); 
+    = llbarRightCurrent(0,hel[0],1,hel[1]);
 
-  Complex LL =
-    hel[2] ==  1 ? leptonLeft.dot( qqbarLeftOneLoopCurrent (2,hel[2],3,hel[3]))  : 0.;
-  Complex RL =
-    hel[2] ==  1 ? leptonRight.dot(qqbarLeftOneLoopCurrent (2,hel[2],3,hel[3]))  : 0.;
-  Complex LR =
-    hel[2] == -1 ? leptonLeft.dot( qqbarRightOneLoopCurrent(2,hel[2],3,hel[3]))  : 0.;
-  Complex RR =
-    hel[2] == -1 ? leptonRight.dot(qqbarRightOneLoopCurrent(2,hel[2],3,hel[3]))  : 0.;
+  const LorentzVector<Complex>& quarkLeft
+    = qqbarLeftOneLoopCurrent(2,hel[2],3,hel[3]);
+  const LorentzVector<Complex>& quarkRight
+    = qqbarRightOneLoopCurrent(2,hel[2],3,hel[3]);
+
+  Complex LL = leptonLeft.dot( quarkLeft );
+  Complex RL = leptonRight.dot( quarkLeft );
+  Complex LR = leptonLeft.dot( quarkRight );
+  Complex RR = leptonRight.dot( quarkRight );
 
   double bProp = (amplitudeMomentum(0)+amplitudeMomentum(1)).m2()/lastSHat();
 
@@ -211,7 +210,7 @@ Complex MatchboxAmplitudellbarqqbar::evaluateOneLoop(size_t, const vector<int>& 
        standardModel()->re()*(up ? standardModel()->ru() : standardModel()->rd())*RR)/
       Complex(bProp-sqr(MZ)/lastSHat(),MZ*GZ/lastSHat());
 
-  Complex res = (SM().alphaS()/(2.*Constants::pi))*4.*Constants::pi*SM().alphaEM()*(gamma+Z);
+  Complex res = (SM().alphaS()/(2.*Constants::pi))*4.*Constants::pi*SM().alphaEMMZ()*(gamma+Z);
   return res;
 
 }
@@ -231,7 +230,7 @@ void MatchboxAmplitudellbarqqbar::persistentInput(PersistentIStream &, int) {}
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxAmplitudellbarqqbar,MatchboxZGammaAmplitude>
-  describeHerwigMatchboxAmplitudellbarqqbar("Herwig::MatchboxAmplitudellbarqqbar", "HwMatchbox.so");
+describeHerwigMatchboxAmplitudellbarqqbar("Herwig::MatchboxAmplitudellbarqqbar", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudellbarqqbar::Init() {
 

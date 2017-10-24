@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ModelGenerator.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// ModelGenerator.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -12,7 +12,7 @@
 //
 
 #include "ModelGenerator.h"
-#include "ThePEG/Interface/ClassDocumentation.h"
+#include "ThePEG/Utilities/DescribeClass.h"
 #include "ThePEG/Interface/Reference.h"
 #include "ThePEG/Interface/RefVector.h"
 #include "ThePEG/Interface/Switch.h"
@@ -22,8 +22,8 @@
 #include "ThePEG/PDT/DecayMode.h"
 #include "ThePEG/Repository/CurrentGenerator.h"
 #include "BSMWidthGenerator.h"
-#include "Herwig++/PDT/GenericMassGenerator.h"
-#include "Herwig++/Decay/DecayIntegrator.h"
+#include "Herwig/PDT/GenericMassGenerator.h"
+#include "Herwig/Decay/DecayIntegrator.h"
 #include "ThePEG/Repository/BaseRepository.h"
 
 using namespace Herwig;
@@ -48,8 +48,10 @@ void ModelGenerator::persistentInput(PersistentIStream & is, int) {
      >> Npoints_ >> Iorder_ >> BWshape_ >> brMin_ >> decayOutput_;
 }
 
-ClassDescription<ModelGenerator> ModelGenerator::initModelGenerator;
-// Definition of the static class description member.
+// Static variable needed for the type description system in ThePEG.
+DescribeClass<ModelGenerator,Interfaced>
+describeThePEGModelGenerator("Herwig::ModelGenerator", "Herwig.so");
+
 
 void ModelGenerator::Init() {
 
@@ -275,9 +277,9 @@ void ModelGenerator::doinit() {
 	  << "# correlations included when they are generated.\n#\n#";
     }
     else {
-      ofs << "#  Herwig++ decay tables in SUSY Les Houches accord format\n";
+      ofs << "#  Herwig decay tables in SUSY Les Houches accord format\n";
       ofs << "Block DCINFO                           # Program information\n";
-      ofs << "1   Herwig++          # Decay Calculator\n";
+      ofs << "1   Herwig          # Decay Calculator\n";
       ofs << "2   " << generator()->strategy()->versionstring() 
 	  << "     # Version number\n";
     }
@@ -318,10 +320,6 @@ void ModelGenerator::doinit() {
 	}
       }
 
-      if ( decayOutput_ == 2 )
-	writeDecayModes(ofs, parent);
-      else
-	writeDecayModes(os, parent);
     }
 
     if( parent->massGenerator() ) {
@@ -338,13 +336,36 @@ void ModelGenerator::doinit() {
     }
     if( parent->widthGenerator() ) parent->widthGenerator()->reset();
   }
+  // loop again to initialise mass and width generators
+  // switch off modes and write output
+  for(PDVector::iterator pit = particles_.begin();
+      pit != particles_.end(); ++pit) {
+    tPDPtr parent = *pit;
+    if(parent->widthGenerator())
+      parent->widthGenerator()->init();
+    if(parent->massGenerator())
+      parent->massGenerator()->init();
+    // Now switch off the modes if needed
+    for(DecaySet::const_iterator it=parent->decayModes().begin();
+	it!=parent->decayModes().end();++it) {
+      if( _theDecayConstructor->disableDecayMode((**it).tag()) )
+	generator()->preinitInterface(*it, "Active", "set", "No");
+    }
+    // output the modes if needed
+    if( !parent->decaySelector().empty() ) {
+      if ( decayOutput_ == 2 )
+	writeDecayModes(ofs, parent);
+      else
+	writeDecayModes(os, parent);
+    }
+  }
+
   //Now construct hard processes given that we know which
   //objects have running widths
   for(unsigned int ix=0;ix<hardProcessConstructors_.size();++ix) {
     hardProcessConstructors_[ix]->init();
     hardProcessConstructors_[ix]->constructDiagrams();
   }
-
 }
 
 void ModelGenerator::checkDecays(PDPtr parent) {
@@ -381,7 +402,7 @@ void ModelGenerator::checkDecays(PDPtr parent) {
 	     << "will be switched off and the branching fractions of the "
 	     << "remaining modes rescaled.\n";
       rescalebrat = true;
-      generator()->preinitInterface(*dit, "OnOff", "set", "Off");
+      generator()->preinitInterface(*dit, "Active", "set", "No");
       generator()->preinitInterface(*dit, "BranchingRatio", 
 				    "set", "0.0");
       DecayIntegratorPtr decayer = dynamic_ptr_cast<DecayIntegratorPtr>((**dit).decayer());
@@ -394,7 +415,16 @@ void ModelGenerator::checkDecays(PDPtr parent) {
       newwidth += (**dit).brat()*oldwidth;
     }
   }
-  if( ( rescalebrat || abs(brsum - 1.) > 1e-12 ) && !parent->decayModes().empty()) {
+  // if no modes left set stable
+  if(newwidth==ZERO) {
+    parent->stable(true);
+    parent->width(ZERO);
+    parent->widthCut(ZERO);
+    parent->massGenerator(tGenericMassGeneratorPtr());
+    parent->widthGenerator(tGenericWidthGeneratorPtr());
+  }
+  // otherwise rescale if needed
+  else if( ( rescalebrat || abs(brsum - 1.) > 1e-12 ) && !parent->decayModes().empty()) {
     dit = parent->decayModes().begin();
     dend = parent->decayModes().end();
     double factor = oldwidth/newwidth;
@@ -411,7 +441,6 @@ void ModelGenerator::checkDecays(PDPtr parent) {
     parent->width(newwidth);
     if( newwidth > ZERO ) parent->cTau(hbarc/newwidth);
   }
-  
 }
 
 namespace {
@@ -445,23 +474,21 @@ namespace {
 
 void ModelGenerator::writeDecayModes(ostream & os, tcPDPtr parent) const {
   if(decayOutput_==0) return;
-  set<tcDMPtr,DecayModeOrdering> modes;
-  for(set<tDMPtr>::const_iterator dit = parent->decayModes().begin();
-      dit != parent->decayModes().end(); ++dit) {
-    if((**dit).on()) modes.insert((*dit));
-  }
+  set<tcDMPtr,DecayModeOrdering> modes(parent->decayModes().begin(),
+				       parent->decayModes().end());
   if(decayOutput_==1) {
     os << " Parent: " << parent->PDGName() << "  Mass (GeV): " 
        << parent->mass()/GeV << "  Total Width (GeV): " 
        << parent->width()/GeV << endl;
     os << std::left << std::setw(40) << '#' 
        << std::left << std::setw(20) << "Partial Width/GeV"
-       << "BR\n"; 
+       << std::left << std::setw(20) << "BR" << "Yes/No\n";
     for(set<tcDMPtr,DecayModeOrdering>::iterator dit=modes.begin();
 	dit!=modes.end();++dit)
       os << std::left << std::setw(40) << (**dit).tag() 
 	 << std::left << std::setw(20) << (**dit).brat()*parent->width()/GeV 
-	 << (**dit).brat() << '\n';
+	 << std::left << std::setw(20)  << (**dit).brat()
+	 << ((**dit).on() ? "Yes" : "No" ) << '\n';
     os << "#\n#";
   }
   else if(decayOutput_==2) {

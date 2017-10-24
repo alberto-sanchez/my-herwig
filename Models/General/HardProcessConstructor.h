@@ -7,11 +7,11 @@
 
 #include "ThePEG/Interface/Interfaced.h"
 #include "HPDiagram.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 #include "ThePEG/Handlers/SubProcessHandler.h"
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Handlers/StandardEventHandler.h"
-#include "Herwig++/MatrixElement/General/GeneralHardME.h"
+#include "Herwig/MatrixElement/General/GeneralHardME.h"
 #include "HardProcessConstructor.fh"
 
 namespace Herwig {
@@ -191,6 +191,26 @@ private:
   bool debug_;
 
 };
+
+namespace HPC_helper {
+  // Helper functor for find_if in duplicate function.
+  class SameIncomingAs {
+  public:
+    SameIncomingAs(tPDPair in) : a(in.first->id()), b(in.second->id())  {}
+    bool operator()(tPDPair ppair) const {
+      long id1(ppair.first->id()), id2(ppair.second->id());
+      return ( id1 == a && id2 == b ) || ( id1 == b && id2 == a );
+    }
+  private:
+    long a, b;
+  };
+
+  inline bool duplicateIncoming(tPDPair ppair,const vector<tPDPair> &incPairs) {
+    vector<tPDPair>::const_iterator it = 
+      find_if( incPairs.begin(), incPairs.end(), SameIncomingAs(ppair) );
+    return it != incPairs.end(); 
+  }
+}
 
 }
 

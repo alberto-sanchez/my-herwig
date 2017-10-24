@@ -1,152 +1,144 @@
-read Matchbox.in
+# -*- ThePEG-repository -*-
 
-################################################################################
-# setup the shower
-#
-# use -LO.in or -NLO.in for LO/NLO simulations, respectively.
-#
-################################################################################
+##################################################
+## Herwig/Matchbox example input file
+##################################################
 
-read DipoleShower.in
-# read DipoleShowerParameters-LO.in
-read DipoleShowerParameters-NLO.in
+##################################################
+## Collider type
+##################################################
+read snippets/Matchbox.in
+read snippets/EECollider.in
 
-################################################################################
-# setup matrix element and matching
-#
-# uncomment the desired calculation
-#
-################################################################################
+##################################################
+## Beam energy sqrt(s)
+##################################################
+
+cd /Herwig/EventHandlers
+set EventHandler:LuminosityFunction:Energy 91.2*GeV
+
+##################################################
+## Process selection
+##################################################
+
+## Note that event generation may fail if no matching matrix element has
+## been found.  Coupling orders are with respect to the Born process,
+## i.e. NLO QCD does not require an additional power of alphas.
+
+## Model assumptions
+read Matchbox/StandardModelLike.in
+read Matchbox/DiagonalCKM.in
+
+## Set the order of the couplings
+cd /Herwig/MatrixElements/Matchbox
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+
+## Select the process
+## You may use identifiers such as p, pbar, j, l, mu+, h0 etc.
+do Factory:Process e- e+ -> j j
+
+## Special settings required for on-shell production of unstable particles
+## enable for on-shell top production
+# read Matchbox/OnShellTopProduction.in
+## enable for on-shell W, Z or h production
+# read Matchbox/OnShellWProduction.in
+# read Matchbox/OnShellZProduction.in
+# read Matchbox/OnShellHProduction.in
+
+##################################################
+## Matrix element library selection
+##################################################
+
+## Select a generic tree/loop combination or a
+## specialized NLO package
+
+# read Matchbox/MadGraph-GoSam.in
+# read Matchbox/MadGraph-MadGraph.in
+# read Matchbox/MadGraph-NJet.in
+# read Matchbox/MadGraph-OpenLoops.in
+
+## Uncomment this to use ggh effective couplings
+## currently only supported by MadGraph-GoSam
+
+# read Matchbox/HiggsEffective.in
+
+##################################################
+## Cut selection
+## See the documentation for more options
+##################################################
+
+## cuts on additional jets
+
+# read Matchbox/DefaultEEJets.in
+
+# set NJetsCut:NJetsMin 3
+
+##################################################
+## Scale choice
+## See the documentation for more options
+##################################################
 
 cd /Herwig/MatrixElements/Matchbox
+set Factory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/SHatScale
 
-insert /Herwig/Generators/LEPGenerator:EventHandler:SubProcessHandlers[0] EEFactory
+##################################################
+## Matching and shower selection
+##################################################
 
-################################################################################
-# two jets
-################################################################################
+read Matchbox/MCatNLO-DefaultShower.in
+# read Matchbox/Powheg-DefaultShower.in
+## use for strict LO/NLO comparisons
+# read Matchbox/MCatLO-DefaultShower.in
+## use for improved LO showering
+# read Matchbox/LO-DefaultShower.in
 
-set EEFactory:OrderInAlphaS 0
-do EEFactory:Process e- e+ j j 
+# read Matchbox/MCatNLO-DipoleShower.in
+# read Matchbox/Powheg-DipoleShower.in
+## use for strict LO/NLO comparisons
+# read Matchbox/MCatLO-DipoleShower.in
+## use for improved LO showering
+# read Matchbox/LO-DipoleShower.in
 
-################################################################################
-# three jets
-################################################################################
+# read Matchbox/NLO-NoShower.in
+# read Matchbox/LO-NoShower.in
 
-# set EEFactory:OrderInAlphaS 1
-# do EEFactory:Process e- e+ j j j
+##################################################
+## Scale uncertainties
+##################################################
 
-# set /Herwig/Cuts/JetFinder:Variant SphericalKt
-# set /Herwig/Cuts/JetFinder:RecombinationScheme E
-# set /Herwig/Cuts/JetFinder:Mode Exclusive
-# set /Herwig/Cuts/JetFinder:ConeRadius 6.283185307
-# set /Herwig/Cuts/JetFinder:DCut 50*GeV2
+# read Matchbox/MuDown.in
+# read Matchbox/MuUp.in
 
-# set /Herwig/Cuts/NJetsCut:NJetsMin 3
+##################################################
+## Shower scale uncertainties
+##################################################
 
-# set /Herwig/Cuts/EECuts:JetFinder /Herwig/Cuts/JetFinder
-# insert /Herwig/Cuts/EECuts:MultiCuts 0 /Herwig/Cuts/NJetsCut
+# read Matchbox/MuQDown.in
+# read Matchbox/MuQUp.in
 
-################################################################################
-# four jets (leading order only)
-################################################################################
+##################################################
+## Analyses
+##################################################
 
-# set EEFactory:OrderInAlphaS 2
-# do EEFactory:Process e- e+ j j j
+# cd /Herwig/Analysis
+# insert Rivet:Analyses 0 XXX_2015_ABC123
+# insert /Herwig/Generators/EventGenerator:AnalysisHandlers 0 Rivet
+# insert /Herwig/Generators/EventGenerator:AnalysisHandlers 0 HepMC
 
-# set /Herwig/Cuts/JetFinder:Variant SphericalKt
-# set /Herwig/Cuts/JetFinder:RecombinationScheme E
-# set /Herwig/Cuts/JetFinder:Mode Exclusive
-# set /Herwig/Cuts/JetFinder:ConeRadius 6.283185307
-# set /Herwig/Cuts/JetFinder:DCut 50*GeV2
+##################################################
+## Do not apply profile scales for LEP as hard
+## scale coincides with kinematic limit
+##################################################
 
-# set /Herwig/Cuts/NJetsCut:NJetsMin 4
+set /Herwig/Shower/ShowerHandler:HardScaleProfile NULL
+set /Herwig/DipoleShower/DipoleShowerHandler:HardScaleProfile NULL
 
-# set /Herwig/Cuts/EECuts:JetFinder /Herwig/Cuts/JetFinder
-# insert /Herwig/Cuts/EECuts:MultiCuts 0 /Herwig/Cuts/NJetsCut
+##################################################
+## Save the generator
+##################################################
 
-################################################################################
-# leading order
-################################################################################
-
-# set EEFactory:VirtualContributions Off
-# set EEFactory:RealContributions Off
-
-################################################################################
-# MC@NLO-type next-to-leading order
-################################################################################
-
-set EEFactory:ShowerApproximation DipoleMatching
-
-################################################################################
-# POWHEG-type next-to-leading order
-################################################################################
-
-# set EEFactory:ShowerApproximation MEMatching
-# set MECorrectionHandler:Factory EEFactory
-# insert /Herwig/Generators/LEPGenerator:EventHandler:PostSubProcessHandlers[0] MECorrectionHandler
-
-################################################################################
-# scale variations
-#
-# see Matchbox.in for different scale choices
-#
-################################################################################
-
-################################################################################
-# hard process scale variations
-################################################################################
-
-set EEFactory:RenormalizationScaleFactor 1.0
-set EEFactory:FactorizationScaleFactor 1.0
-
-################################################################################
-# matching scale variations 
-#  - HardScaleFactor has to equal the one for the shower!
-################################################################################
-
-set DipoleMatching:RenormalizationScaleFactor 1.0
-set DipoleMatching:FactorizationScaleFactor 1.0
-set DipoleMatching:HardScaleFactor 1.0
-
-set MEMatching:RenormalizationScaleFactor 1.0
-set MEMatching:FactorizationScaleFactor 1.0
-set MEMatching:ScreeningScale 10.0*GeV
-
-################################################################################
-# shower scale variations
-################################################################################
-
-set /Herwig/DipoleShower/DipoleShowerHandler:RenormalizationScaleFactor 1.0
-set /Herwig/DipoleShower/DipoleShowerHandler:FactorizationScaleFactor 1.0
-set /Herwig/DipoleShower/DipoleShowerHandler:HardScaleFactor 1.0
-
-################################################################################
-# setup generator and analysis
-#
-#
-#
-################################################################################
+do /Herwig/MatrixElements/Matchbox/Factory:ProductionMode
 
 cd /Herwig/Generators
-
-set LEPGenerator:EventHandler:CascadeHandler /Herwig/DipoleShower/DipoleShowerHandler
-set LEPGenerator:EventHandler:CascadeHandler:MPIHandler NULL
-
-set LEPGenerator:NumberOfEvents 100000000
-set LEPGenerator:RandomNumberGenerator:Seed 31122001
-set LEPGenerator:DebugLevel 1
-set LEPGenerator:PrintEvent 10
-set LEPGenerator:MaxErrors 10000
-
-set LEPGenerator:EventHandler:LuminosityFunction:Energy 91.2
-
-cd /Herwig/Generators
-
-#insert LEPGenerator:AnalysisHandlers 0 /Herwig/Analysis/HepMCFile
-set /Herwig/Analysis/HepMCFile:PrintEvent 1000000
-set /Herwig/Analysis/HepMCFile:Format GenEvent
-set /Herwig/Analysis/HepMCFile:Units GeV_mm
-set /Herwig/Analysis/HepMCFile:Filename events.fifo
-
-saverun LEP LEPGenerator
+saverun LEP-Matchbox EventGenerator

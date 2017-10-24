@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ShowerApproximation.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ShowerApproximation.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -14,6 +14,7 @@
 #include "ShowerApproximation.h"
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Interface/Switch.h"
+#include "ThePEG/Interface/Reference.h"
 #include "ThePEG/Interface/Parameter.h"
 #include "ThePEG/EventRecord/Particle.h"
 #include "ThePEG/Repository/UseRandom.h"
@@ -23,18 +24,21 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/TildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/InvertedTildeKinematics.h"
 
 using namespace Herwig;
 
 ShowerApproximation::ShowerApproximation() 
-  : HandlerBase(), theBelowCutoff(false),
+  : HandlerBase(),
+    theExtrapolationX(1.0), theBelowCutoff(false),
     theFFPtCut(1.0*GeV), theFFScreeningScale(ZERO),
     theFIPtCut(1.0*GeV), theFIScreeningScale(ZERO),
     theIIPtCut(1.0*GeV), theIIScreeningScale(ZERO),
+    theSafeCut(0.0*GeV),
     theRestrictPhasespace(true), theHardScaleFactor(1.0),
     theRenormalizationScaleFactor(1.0), theFactorizationScaleFactor(1.0),
-    theExtrapolationX(0.65),
     theRealEmissionScaleInSubtraction(showerScale), 
     theBornScaleInSubtraction(showerScale), 
     theEmissionScaleInSubtraction(showerScale), 
@@ -43,29 +47,78 @@ ShowerApproximation::ShowerApproximation()
     theEmissionScaleInSplitting(showerScale),
     theRenormalizationScaleFreeze(1.*GeV),
     theFactorizationScaleFreeze(1.*GeV),
-    theProfileScales(true),
-    theProfileRho(0.3) {}
+  maxPtIsMuF(false) {}
 
 ShowerApproximation::~ShowerApproximation() {}
 
-void ShowerApproximation::setDipole(Ptr<SubtractionDipole>::tcptr dip) { theDipole = dip; }
+void ShowerApproximation::setLargeNBasis() {
+  assert(dipole()->realEmissionME()->matchboxAmplitude());
+  if ( !dipole()->realEmissionME()->matchboxAmplitude()->treeAmplitudes() )
+    return;
+  if ( !theLargeNBasis ) {
+    if ( !dipole()->realEmissionME()->matchboxAmplitude()->colourBasis() )
+      throw Exception() << "ShowerApproximation::setLargeNBasis(): Expecting a colour basis object."
+			<< Exception::runerror;
+    theLargeNBasis = 
+      dipole()->realEmissionME()->matchboxAmplitude()->colourBasis()->cloneMe();
+    theLargeNBasis->clear();
+    theLargeNBasis->doLargeN();
+  }
+}
 
-Ptr<SubtractionDipole>::tcptr ShowerApproximation::dipole() const { return theDipole; }
+void ShowerApproximation::setDipole(Ptr<SubtractionDipole>::tptr dip) { 
+  theDipole = dip;
+  setLargeNBasis();
+}
+
+Ptr<SubtractionDipole>::tptr ShowerApproximation::dipole() const { return theDipole; }
+
+Ptr<TildeKinematics>::tptr
+ShowerApproximation::showerTildeKinematics() const {
+  return Ptr<TildeKinematics>::tptr();
+}
+
+Ptr<InvertedTildeKinematics>::tptr 
+ShowerApproximation::showerInvertedTildeKinematics() const {
+  return Ptr<InvertedTildeKinematics>::tptr();
+}
+
+void ShowerApproximation::checkCutoff() {
+  assert(!showerTildeKinematics());
+}
+
+void ShowerApproximation::getShowerVariables() {
+
+  // check for the cutoff
+  dipole()->isAboveCutoff(isAboveCutoff());
+
+  // get the hard scale
+  dipole()->showerHardScale(hardScale());
+
+  // set the shower scale and variables for completeness
+  dipole()->showerScale(dipole()->lastPt());
+  dipole()->showerParameters().resize(1);
+  dipole()->showerParameters()[0] = dipole()->lastZ();
+
+  // check for phase space
+  dipole()->isInShowerPhasespace(isInShowerPhasespace());
+
+}
 
 bool ShowerApproximation::isAboveCutoff() const {
 
   if ( dipole()->bornEmitter() > 1 &&
        dipole()->bornSpectator() > 1 ) {
-    return dipole()->lastPt() >= ffPtCut();
+    return dipole()->lastPt() >= max(ffPtCut(),safeCut());
   } else if ( ( dipole()->bornEmitter() > 1 &&
 		dipole()->bornSpectator() < 2 ) ||
 	      ( dipole()->bornEmitter() < 2 &&
 		dipole()->bornSpectator() > 1 ) ) {
-    return dipole()->lastPt() >= fiPtCut();
+    return dipole()->lastPt() >= max(fiPtCut(),safeCut());
   } else {
     assert(dipole()->bornEmitter() < 2 &&
 	   dipole()->bornSpectator() < 2);
-    return dipole()->lastPt() >= iiPtCut();
+    return dipole()->lastPt() >= max(iiPtCut(),safeCut());
   }
 
   return true;
@@ -73,56 +126,69 @@ bool ShowerApproximation::isAboveCutoff() const {
 }
 
 Energy ShowerApproximation::hardScale() const {
-  if ( !bornCXComb()->mePartonData()[0]->coloured() &&
-       !bornCXComb()->mePartonData()[1]->coloured() ) {
-    Energy maxPt = (bornCXComb()->meMomenta()[0] + bornCXComb()->meMomenta()[1]).m();
+  if ( !maxPtIsMuF ) {
+    if ( !bornCXComb()->mePartonData()[0]->coloured() &&
+	 !bornCXComb()->mePartonData()[1]->coloured() ) {
+      Energy maxPt = (bornCXComb()->meMomenta()[0] + bornCXComb()->meMomenta()[1]).m();
+      maxPt *= hardScaleFactor();
+      return maxPt;
+    }
+    Energy maxPt = generator()->maximumCMEnergy();
+    vector<Lorentz5Momentum>::const_iterator p = 
+      bornCXComb()->meMomenta().begin() + 2;
+    cPDVector::const_iterator pp = 
+      bornCXComb()->mePartonData().begin() + 2;
+    for ( ; p != bornCXComb()->meMomenta().end(); ++p, ++pp )
+      if ( (**pp).coloured() )
+	maxPt = min(maxPt,p->mt());
+    if ( maxPt == generator()->maximumCMEnergy() )
+      maxPt = (bornCXComb()->meMomenta()[0] + bornCXComb()->meMomenta()[1]).m();
     maxPt *= hardScaleFactor();
     return maxPt;
+  } else {
+    return hardScaleFactor()*sqrt(bornCXComb()->lastShowerScale());
   }
-  Energy maxPt = generator()->maximumCMEnergy();
-  vector<Lorentz5Momentum>::const_iterator p = 
-    bornCXComb()->meMomenta().begin() + 2;
-  cPDVector::const_iterator pp = 
-    bornCXComb()->mePartonData().begin() + 2;
-  for ( ; p != bornCXComb()->meMomenta().end(); ++p, ++pp )
-    if ( (**pp).coloured() )
-      maxPt = min(maxPt,p->perp());
-  if ( maxPt == generator()->maximumCMEnergy() )
-    maxPt = (bornCXComb()->meMomenta()[0] + bornCXComb()->meMomenta()[1]).m();
-  maxPt *= hardScaleFactor();
-  return maxPt;
-}
-
-double ShowerApproximation::hardScaleProfile(Energy hard, Energy soft) const {
-  if ( !bornCXComb()->mePartonData()[0]->coloured() &&
-       !bornCXComb()->mePartonData()[1]->coloured() )
-    return 1;
-  double x = soft/hard;
-  if ( theProfileScales ) {
-    if ( x > 1. ) {
-      return 0.;
-    } else if ( x <= 1. && x > 1. - theProfileRho ) {
-      return sqr(1.-x)/(2.*sqr(theProfileRho));
-    } else if ( x <= 1. - theProfileRho &&
-		x > 1. - 2.*theProfileRho ) {
-      return 1. - sqr(1.-2.*theProfileRho-x)/(2.*sqr(theProfileRho));
-    } else {
-      return 1.;
-    }
-  }
-  if ( x <= 1. )
-    return 1.;
-  return 0.;
 }
 
 bool ShowerApproximation::isInShowerPhasespace() const {
 
-  if ( !isAboveCutoff() )
+  if ( !dipole()->isAboveCutoff() )
     return false;
   if ( !restrictPhasespace() )
     return true;
 
-  return dipole()->lastPt() <= hardScale();
+  InvertedTildeKinematics& kinematics =
+    const_cast<InvertedTildeKinematics&>(*dipole()->invertedTildeKinematics());
+  tcStdXCombPtr tmpreal = kinematics.realXComb();
+  tcStdXCombPtr tmpborn = kinematics.bornXComb();
+  Ptr<SubtractionDipole>::tptr tmpdip = kinematics.dipole();
+
+  Energy hard = dipole()->showerHardScale();
+  Energy pt = dipole()->lastPt();
+  double z = dipole()->lastZ();
+
+  pair<double,double> zbounds(0.,1.);
+
+  kinematics.dipole(const_ptr_cast<Ptr<SubtractionDipole>::tptr>(theDipole));
+  kinematics.prepare(realCXComb(),bornCXComb());
+
+  if ( pt > hard ) {
+    kinematics.dipole(tmpdip);
+    kinematics.prepare(tmpreal,tmpborn);
+    return false;
+  }
+
+  try {
+    zbounds = kinematics.zBounds(pt,hard);
+  } catch(...) {
+    kinematics.dipole(tmpdip);
+    kinematics.prepare(tmpreal,tmpborn);
+    throw;
+  }
+  kinematics.dipole(tmpdip);
+  kinematics.prepare(tmpreal,tmpborn);
+
+  return z > zbounds.first && z < zbounds.second;
 
 }
 
@@ -273,15 +339,80 @@ double ShowerApproximation::scaleWeight(int rScale, int bScale, int eScale) cons
     
 }
 
+double ShowerApproximation::channelWeight(int emitter, int emission, 
+					  int spectator, int) const {
+  double cfac = 1.;
+  double Nc = generator()->standardModel()->Nc();
+  if (realCXComb()->mePartonData()[emitter]->iColour() == PDT::Colour8){
+    if (realCXComb()->mePartonData()[emission]->iColour() == PDT::Colour8)
+      cfac = Nc;
+    else if ( realCXComb()->mePartonData()[emission]->iColour() == PDT::Colour3 ||
+              realCXComb()->mePartonData()[emission]->iColour() == PDT::Colour3bar)
+      cfac = 0.5;
+    else assert(false);
+  }
+  else if ((realCXComb()->mePartonData()[emitter] ->iColour() == PDT::Colour3 ||
+            realCXComb()->mePartonData()[emitter] ->iColour() == PDT::Colour3bar))
+    cfac = (sqr(Nc)-1.)/(2.*Nc);
+  else assert(false);
+  // do the most simple thing for the time being; needs fixing later
+  if ( realCXComb()->mePartonData()[emission]->id() == ParticleID::g ) {
+    Energy2 pipk = 
+      realCXComb()->meMomenta()[emitter] * realCXComb()->meMomenta()[spectator];
+    Energy2 pipj = 
+      realCXComb()->meMomenta()[emitter] * realCXComb()->meMomenta()[emission];
+    Energy2 pjpk = 
+      realCXComb()->meMomenta()[emission] * realCXComb()->meMomenta()[spectator];
+    return cfac *GeV2 * pipk / ( pipj * ( pipj + pjpk ) );
+  }
+  return
+    cfac * GeV2 / (realCXComb()->meMomenta()[emitter] * realCXComb()->meMomenta()[emission]);
+}
+
+double ShowerApproximation::channelWeight() const {
+  double currentChannel = channelWeight(dipole()->realEmitter(),
+					dipole()->realEmission(),
+					dipole()->realSpectator(),
+					dipole()->bornEmitter());
+  if ( currentChannel == 0. )
+    return 0.;
+  double sum = 0.;
+  for ( vector<Ptr<SubtractionDipole>::tptr>::const_iterator dip =
+	  dipole()->partnerDipoles().begin();
+	dip != dipole()->partnerDipoles().end(); ++dip )
+    sum += channelWeight((**dip).realEmitter(),
+			 (**dip).realEmission(),
+			 (**dip).realSpectator(),
+			 (**dip).bornEmitter());
+  assert(sum > 0.0);
+  return currentChannel / sum;
+}
+
+
 // If needed, insert default implementations of virtual function defined
 // in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
 
+void ShowerApproximation::doinit() {
+  if ( profileScales() ) {
+    if ( profileScales()->unrestrictedPhasespace() &&
+	 restrictPhasespace() ) {
+      generator()->log()
+	<< "ShowerApproximation warning: The scale profile chosen requires an unrestricted phase space,\n"
+	<< "however, the phase space was set to be restricted. Will switch to unrestricted phase space.\n"
+	<< flush;
+      restrictPhasespace(false);
+    }
+  }
+  HandlerBase::doinit();
+}
 
 void ShowerApproximation::persistentOutput(PersistentOStream & os) const {
-  os << theBornXComb << theRealXComb << theTildeXCombs << theDipole << theBelowCutoff
+  os << theLargeNBasis
+     << theBornXComb << theRealXComb << theTildeXCombs << theDipole << theBelowCutoff
      << ounit(theFFPtCut,GeV) << ounit(theFFScreeningScale,GeV) 
      << ounit(theFIPtCut,GeV) << ounit(theFIScreeningScale,GeV) 
-     << ounit(theIIPtCut,GeV) << ounit(theIIScreeningScale,GeV) 
+     << ounit(theIIPtCut,GeV) << ounit(theIIScreeningScale,GeV)
+     << ounit(theSafeCut,GeV) 
      << theRestrictPhasespace << theHardScaleFactor
      << theRenormalizationScaleFactor << theFactorizationScaleFactor
      << theExtrapolationX
@@ -289,15 +420,17 @@ void ShowerApproximation::persistentOutput(PersistentOStream & os) const {
      << theEmissionScaleInSubtraction << theRealEmissionScaleInSplitting
      << theBornScaleInSplitting << theEmissionScaleInSplitting
      << ounit(theRenormalizationScaleFreeze,GeV)
-     << ounit(theFactorizationScaleFreeze,GeV)
-     << theProfileScales << theProfileRho;
+     << ounit(theFactorizationScaleFreeze,GeV) << maxPtIsMuF
+     << theHardScaleProfile;
 }
 
 void ShowerApproximation::persistentInput(PersistentIStream & is, int) {
-  is >> theBornXComb >> theRealXComb >> theTildeXCombs >> theDipole >> theBelowCutoff
+  is >> theLargeNBasis
+     >> theBornXComb >> theRealXComb >> theTildeXCombs >> theDipole >> theBelowCutoff
      >> iunit(theFFPtCut,GeV) >> iunit(theFFScreeningScale,GeV) 
      >> iunit(theFIPtCut,GeV) >> iunit(theFIScreeningScale,GeV) 
      >> iunit(theIIPtCut,GeV) >> iunit(theIIScreeningScale,GeV) 
+     >> iunit(theSafeCut,GeV)
      >> theRestrictPhasespace >> theHardScaleFactor
      >> theRenormalizationScaleFactor >> theFactorizationScaleFactor
      >> theExtrapolationX
@@ -305,10 +438,9 @@ void ShowerApproximation::persistentInput(PersistentIStream & is, int) {
      >> theEmissionScaleInSubtraction >> theRealEmissionScaleInSplitting
      >> theBornScaleInSplitting >> theEmissionScaleInSplitting
      >> iunit(theRenormalizationScaleFreeze,GeV)
-     >> iunit(theFactorizationScaleFreeze,GeV)
-     >> theProfileScales >> theProfileRho;
+     >> iunit(theFactorizationScaleFreeze,GeV) >> maxPtIsMuF
+     >> theHardScaleProfile;
 }
-
 
 // *** Attention *** The following static variable is needed for the type
 // description system in ThePEG. Please check that the template arguments
@@ -316,7 +448,7 @@ void ShowerApproximation::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeAbstractClass<ShowerApproximation,HandlerBase>
-  describeHerwigShowerApproximation("Herwig::ShowerApproximation", "HwMatchbox.so");
+  describeHerwigShowerApproximation("Herwig::ShowerApproximation", "Herwig.so");
 
 void ShowerApproximation::Init() {
 
@@ -341,6 +473,12 @@ void ShowerApproximation::Init() {
      "Set the pt infrared cutoff",
      &ShowerApproximation::theIIPtCut, GeV, 1.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
+    
+  static Parameter<ShowerApproximation,Energy> interfaceSafeCut
+    ("SafeCut",
+     "Set the enhanced infrared cutoff for the Matching.",
+     &ShowerApproximation::theSafeCut, GeV, 0.0*GeV, 0.0*GeV, 0*GeV,
+     false, false, Interface::lowerlim);
 
   static Parameter<ShowerApproximation,Energy> interfaceFFScreeningScale
     ("FFScreeningScale",
@@ -364,14 +502,14 @@ void ShowerApproximation::Init() {
     ("RestrictPhasespace",
      "Switch on or off phasespace restrictions",
      &ShowerApproximation::theRestrictPhasespace, true, false, false);
-  static SwitchOption interfaceRestrictPhasespaceOn
+  static SwitchOption interfaceRestrictPhasespaceYes
     (interfaceRestrictPhasespace,
-     "On",
+     "Yes",
      "Perform phasespace restrictions",
      true);
-  static SwitchOption interfaceRestrictPhasespaceOff
+  static SwitchOption interfaceRestrictPhasespaceNo
     (interfaceRestrictPhasespace,
-     "Off",
+     "No",
      "Do not perform phasespace restrictions",
      false);
 
@@ -396,7 +534,7 @@ void ShowerApproximation::Init() {
   static Parameter<ShowerApproximation,double> interfaceExtrapolationX
     ("ExtrapolationX",
      "The x from which on extrapolation should be performed.",
-     &ShowerApproximation::theExtrapolationX, 0.65, 0.0, 1.0,
+     &ShowerApproximation::theExtrapolationX, 1.0, 0.0, 1.0,
      false, false, Interface::limited);
 
   static Switch<ShowerApproximation,int> interfaceRealEmissionScaleInSubtraction
@@ -419,6 +557,8 @@ void ShowerApproximation::Init() {
      "Use the shower scale",
      showerScale);
 
+  interfaceRealEmissionScaleInSubtraction.rank(-1);
+
   static Switch<ShowerApproximation,int> interfaceBornScaleInSubtraction
     ("BornScaleInSubtraction",
      "Set the scale choice for the Born cross section in the matching subtraction.",
@@ -438,6 +578,8 @@ void ShowerApproximation::Init() {
      "ShowerScale",
      "Use the shower scale",
      showerScale);
+
+  interfaceBornScaleInSubtraction.rank(-1);
 
   static Switch<ShowerApproximation,int> interfaceEmissionScaleInSubtraction
     ("EmissionScaleInSubtraction",
@@ -459,6 +601,8 @@ void ShowerApproximation::Init() {
      "Use the shower scale",
      showerScale);
 
+  interfaceEmissionScaleInSubtraction.rank(-1);
+
   static Switch<ShowerApproximation,int> interfaceRealEmissionScaleInSplitting
     ("RealEmissionScaleInSplitting",
      "Set the scale choice for the real emission cross section in the splitting.",
@@ -478,6 +622,8 @@ void ShowerApproximation::Init() {
      "ShowerScale",
      "Use the shower scale",
      showerScale);
+
+  interfaceRealEmissionScaleInSplitting.rank(-1);
 
   static Switch<ShowerApproximation,int> interfaceBornScaleInSplitting
     ("BornScaleInSplitting",
@@ -499,6 +645,8 @@ void ShowerApproximation::Init() {
      "Use the shower scale",
      showerScale);
 
+  interfaceBornScaleInSplitting.rank(-1);
+
   static Switch<ShowerApproximation,int> interfaceEmissionScaleInSplitting
     ("EmissionScaleInSplitting",
      "Set the scale choice for the emission in the splitting.",
@@ -519,11 +667,15 @@ void ShowerApproximation::Init() {
      "Use the shower scale",
      showerScale);
 
+  interfaceEmissionScaleInSplitting.rank(-1);
+
   static Parameter<ShowerApproximation,Energy> interfaceRenormalizationScaleFreeze
     ("RenormalizationScaleFreeze",
      "The freezing scale for the renormalization scale.",
      &ShowerApproximation::theRenormalizationScaleFreeze, GeV, 1.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
+
+  interfaceRenormalizationScaleFreeze.rank(-1);
 
   static Parameter<ShowerApproximation,Energy> interfaceFactorizationScaleFreeze
     ("FactorizationScaleFreeze",
@@ -531,26 +683,34 @@ void ShowerApproximation::Init() {
      &ShowerApproximation::theFactorizationScaleFreeze, GeV, 1.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
 
-  static Switch<ShowerApproximation,bool> interfaceProfileScales
-    ("ProfileScales",
-     "Switch on or off use of profile scales.",
-     &ShowerApproximation::theProfileScales, true, false, false);
-  static SwitchOption interfaceProfileScalesYes
-    (interfaceProfileScales,
-     "Yes",
-     "Use profile scales.",
-     true);
-  static SwitchOption interfaceProfileScalesNo
-    (interfaceProfileScales,
-     "No",
-     "Use a hard cutoff.",
-     false);
+  interfaceFactorizationScaleFreeze.rank(-1);
 
-  static Parameter<ShowerApproximation,double> interfaceProfileRho
-    ("ProfileRho",
-     "The rho parameter of the profile scales.",
-     &ShowerApproximation::theProfileRho, 0.3, 0.0, 1.0,
-     false, false, Interface::limited);
+  static Reference<ShowerApproximation,HardScaleProfile> interfaceHardScaleProfile
+    ("HardScaleProfile",
+     "The hard scale profile to use.",
+     &ShowerApproximation::theHardScaleProfile, false, false, true, true, false);
+
+  static Reference<ShowerApproximation,ColourBasis> interfaceLargeNBasis
+    ("LargeNBasis",
+     "Set the large-N colour basis implementation.",
+     &ShowerApproximation::theLargeNBasis, false, false, true, true, false);
+
+  interfaceLargeNBasis.rank(-1);
+
+  static Switch<ShowerApproximation,bool> interfaceMaxPtIsMuF
+    ("MaxPtIsMuF",
+     "",
+     &ShowerApproximation::maxPtIsMuF, false, false, false);
+  static SwitchOption interfaceMaxPtIsMuFYes
+    (interfaceMaxPtIsMuF,
+     "Yes",
+     "",
+     true);
+  static SwitchOption interfaceMaxPtIsMuFNo
+    (interfaceMaxPtIsMuF,
+     "No",
+     "",
+     false);
 
 }
 

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// HerwigStrategy.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2008-2011 The Herwig Collaboration
+// HerwigStrategy.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2008-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_HerwigStrategy_H
@@ -37,12 +37,12 @@ public:
   /**
    * Freeform version string
    */
-  static std::string version;
+  static const std::string version;
 
   /**
    * Version string
    */
-  virtual const std::string versionstring() const { return version; }
+  virtual const std::string versionstring() const;
 
 protected:
 

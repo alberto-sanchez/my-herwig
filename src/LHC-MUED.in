@@ -1,3 +1,5 @@
+# -*- ThePEG-repository -*-
+
 ##################################################
 # Example generator for the MUED
 # The best way to use this is to make your own 
@@ -9,6 +11,12 @@
 # The second section contains the user settings.
 ###################################################
 
+read snippets/PPCollider.in
+
+# Set emission to POWHEG for radiation in decays
+set /Herwig/Shower/ShowerHandler:HardEmission POWHEG
+
+# read model
 read MUED.model
 cd /Herwig/NewPhysics
 
@@ -61,13 +69,26 @@ set ThreeBodyDC:CreateDecayModes Yes
 #set NewModel:MinimumBR 1e-6
 
 # Intrinsic pT tune extrapolated to LHC energy
-set /Herwig/Shower/Evolver:IntrinsicPtGaussian 2.2*GeV
+set /Herwig/Shower/ShowerHandler:IntrinsicPtGaussian 2.2*GeV
+
+##################################################
+## prepare for Rivet analysis or HepMC output
+## when running with parton shower
+##################################################
+#read snippets/Rivet.in
+#insert /Herwig/Analysis/Rivet:Analyses 0 XXX_2015_ABC123
+#read snippets/HepMC.in
+#set /Herwig/Analysis/HepMC:PrintEvent NNN
+
+##################################################
+## prepare for Rivet analysis or HepMC output
+## when running at fixed order (NO shower)
+##################################################
+#read snippets/RivetFixedOrder.in
+#insert /Herwig/Analysis/RivetFixedOrder:Analyses 0 XXX_2015_ABC123
+#read snippets/HepMCFixedOrder.in
+#set /Herwig/Analysis/HepMCFixedOrder:PrintEvent NNN
 
 # Other parameters for run
 cd /Herwig/Generators
-set LHCGenerator:NumberOfEvents 10000000
-set LHCGenerator:RandomNumberGenerator:Seed 31122001
-set LHCGenerator:PrintEvent 10
-set LHCGenerator:MaxErrors 10000
-
-saverun LHC-MUED LHCGenerator
+saverun LHC-MUED EventGenerator

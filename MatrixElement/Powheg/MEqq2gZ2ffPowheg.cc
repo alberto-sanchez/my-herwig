@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEqq2gZ2ffPowheg.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// MEqq2gZ2ffPowheg.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -19,9 +19,9 @@
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/Handlers/StandardXComb.h"
 #include "ThePEG/PDT/EnumParticles.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 #include "ThePEG/Repository/EventGenerator.h"
-#include "Herwig++/Utilities/Maths.h"
+#include "Herwig/Utilities/Maths.h"
 
 using namespace Herwig;
 using Herwig::Math::ReLi2;
@@ -157,12 +157,14 @@ void MEqq2gZ2ffPowheg::Init() {
 }
 
 int MEqq2gZ2ffPowheg::nDim() const {
-  return 3;
+  return HwMEBase::nDim() + ( _contrib>=1 ? 2 : 0 );
 }
 
 bool MEqq2gZ2ffPowheg::generateKinematics(const double * r) {
-  _xt=*(r+1);
-  _v =*(r+2);
+  if(_contrib>=1) {
+    _xt=*(r+1);
+    _v =*(r+2);
+  }
   return MEqq2gZ2ff::generateKinematics(r);
 }
 
@@ -220,7 +222,7 @@ double MEqq2gZ2ffPowheg::NLOweight() const {
   //trick to try and reduce neg wgt contribution
   if(_xt<1.-_eps)
     wgt += _a*(1./pow(1.-_xt,_p)-(1.-pow(_eps,1.-_p))/(1.-_p)/(1.-_eps));
-  assert(!isinf(wgt)&&!isnan(wgt));
+  assert(isfinite(wgt));
   // return the answer
   return _contrib==1 ? max(0.,wgt) : max(0.,-wgt);
 }

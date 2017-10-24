@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// EtaPiPiPiDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// EtaPiPiPiDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -17,8 +17,9 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/Helicity/WaveFunction/ScalarWaveFunction.h"
-#include "Herwig++/PDT/ThreeBodyAllOn1IntegralCalculator.h"
-#include "Herwig++/PDT/OneOffShellCalculator.h"
+#include "Herwig/PDT/ThreeBodyAllOn1IntegralCalculator.h"
+#include "Herwig/PDT/OneOffShellCalculator.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -237,11 +238,12 @@ void EtaPiPiPiDecayer::Init() {
 double EtaPiPiPiDecayer::me2(const int,const Particle & inpart,
 			     const ParticleVector & decay,
 			     MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin0,PDT::Spin0,PDT::Spin0,PDT::Spin0)));
   useMe();
   if(meopt==Initialize) {
     ScalarWaveFunction::
       calculateWaveFunctions(_rho,const_ptr_cast<tPPtr>(&inpart),incoming);
-    ME(DecayMatrixElement(PDT::Spin0,PDT::Spin0,PDT::Spin0,PDT::Spin0));
   }
   if(meopt==Terminate) {
     // set up the spin information for the decay products
@@ -265,7 +267,7 @@ double EtaPiPiPiDecayer::me2(const int,const Particle & inpart,
   double x(0.5*sqrt(3.)*(u-t)/inpart.mass()/Q),x2(x*x);
   double y(0.5*msum/inpart.mass()*(Mmm2-s)/m34/Q-1),y2(y*y);
   double me(_prefactor[imode()]*(1+_a[imode()]*y+_b[imode()]*y2+_c[imode()]*x2));
-  ME()(0,0,0,0)=sqrt(me);
+  (*ME())(0,0,0,0)=sqrt(me);
   return me;
 }
 

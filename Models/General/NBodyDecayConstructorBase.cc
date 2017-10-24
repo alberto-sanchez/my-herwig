@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// NBodyDecayConstructorBase.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// NBodyDecayConstructorBase.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -22,7 +22,8 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "DecayConstructor.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
+#include "ThePEG/Utilities/DescribeClass.h"
 
 using namespace Herwig; 
 using namespace ThePEG;
@@ -32,7 +33,9 @@ void NBodyDecayConstructorBase::persistentOutput(PersistentOStream & os ) const 
      << createModes_ << minReleaseFraction_ << maxBoson_ << maxList_
      << removeOnShell_ << excludeEffective_ << includeTopOnShell_
      << excludedVerticesVector_ << excludedVerticesSet_ 
-     << excludedParticlesVector_ << excludedParticlesSet_;
+     << excludedParticlesVector_ << excludedParticlesSet_
+     << removeFlavourChangingVertices_ << removeSmallVertices_
+     << minVertexNorm_;
 }
 
 void NBodyDecayConstructorBase::persistentInput(PersistentIStream & is , int) {
@@ -40,8 +43,14 @@ void NBodyDecayConstructorBase::persistentInput(PersistentIStream & is , int) {
      >> createModes_ >> minReleaseFraction_ >> maxBoson_ >> maxList_
      >> removeOnShell_ >> excludeEffective_ >> includeTopOnShell_
      >> excludedVerticesVector_ >> excludedVerticesSet_
-     >> excludedParticlesVector_ >> excludedParticlesSet_;
+     >> excludedParticlesVector_ >> excludedParticlesSet_
+     >> removeFlavourChangingVertices_ >> removeSmallVertices_
+     >> minVertexNorm_;
 }
+
+// Static variable needed for the type description system in ThePEG.
+DescribeAbstractClass<NBodyDecayConstructorBase,Interfaced>
+describeThePEGNBodyDecayConstructorBase("Herwig::NBodyDecayConstructorBase", "Herwig.so");
 
 AbstractClassDescription<NBodyDecayConstructorBase> 
 NBodyDecayConstructorBase::initNBodyDecayConstructorBase;
@@ -57,12 +66,12 @@ void NBodyDecayConstructorBase::Init() {
     ("InitializeDecayers",
      "Initialize new decayers",
      &NBodyDecayConstructorBase::init_, true, false, false);
-  static SwitchOption interfaceInitializeDecayersInitializeDecayersOn
+  static SwitchOption interfaceInitializeDecayersInitializeDecayersYes
     (interfaceInitializeDecayers,
      "Yes",
      "Initialize new decayers to find max weights",
      true);
-  static SwitchOption interfaceInitializeDecayersoff
+  static SwitchOption interfaceInitializeDecayersNo
     (interfaceInitializeDecayers,
      "No",
      "Use supplied weights for integration",
@@ -84,12 +93,12 @@ void NBodyDecayConstructorBase::Init() {
     ("OutputInfo",
      "Whether to output information about the decayers",
      &NBodyDecayConstructorBase::info_, false, false, false);
-  static SwitchOption interfaceOutputInfoOff
+  static SwitchOption interfaceOutputInfoNo
     (interfaceOutputInfo,
      "No",
      "Do not output information regarding the created decayers",
      false);
-  static SwitchOption interfaceOutputInfoOn
+  static SwitchOption interfaceOutputInfoYes
     (interfaceOutputInfo,
      "Yes",
      "Output information regarding the decayers",
@@ -99,12 +108,12 @@ void NBodyDecayConstructorBase::Init() {
     ("CreateDecayModes",
      "Whether to create the ThePEG::DecayMode objects as well as the decayers",
      &NBodyDecayConstructorBase::createModes_, true, false, false);
-  static SwitchOption interfaceCreateDecayModesOn
+  static SwitchOption interfaceCreateDecayModesYes
     (interfaceCreateDecayModes,
      "Yes",
      "Create the ThePEG::DecayMode objects",
      true);
-  static SwitchOption interfaceCreateDecayModesOff
+  static SwitchOption interfaceCreateDecayModesNo
     (interfaceCreateDecayModes,
      "No",
      "Only create the Decayer objects",
@@ -236,9 +245,52 @@ void NBodyDecayConstructorBase::Init() {
      "No",
      "Don't include them",
      true);
+
+  static Switch<NBodyDecayConstructorBase,bool> interfaceRemoveSmallVertices
+    ("RemoveSmallVertices",
+     "Remove vertices with norm() below minVertexNorm",
+     &NBodyDecayConstructorBase::removeSmallVertices_, false, false, false);
+  static SwitchOption interfaceRemoveSmallVerticesYes
+    (interfaceRemoveSmallVertices,
+     "Yes",
+     "Remove them",
+     true);
+  static SwitchOption interfaceRemoveSmallVerticesNo
+    (interfaceRemoveSmallVertices,
+     "No",
+     "Don't remove them",
+     false);
+
+  static Parameter<NBodyDecayConstructorBase,double> interfaceMinVertexNorm
+    ("MinVertexNorm",
+     "Minimum allowed value of the notm() of the vertex if removing small vertices",
+     &NBodyDecayConstructorBase::minVertexNorm_, 1e-8, 1e-300, 1.,
+     false, false, Interface::limited);
+
+  static Switch<NBodyDecayConstructorBase,bool> interfaceRemoveFlavourChangingVertices
+    ("RemoveFlavourChangingVertices",
+     "Remove flavour changing interactions with the photon and gluon",
+     &NBodyDecayConstructorBase::removeFlavourChangingVertices_, false, false, false);
+  static SwitchOption interfaceRemoveFlavourChangingVerticesYes
+    (interfaceRemoveFlavourChangingVertices,
+     "Yes",
+     "Remove them",
+     true);
+  static SwitchOption interfaceRemoveFlavourChangingVerticesNo
+    (interfaceRemoveFlavourChangingVertices,
+     "No",
+     "Don't remove them",
+     false);
+
 }
 
 void NBodyDecayConstructorBase::setBranchingRatio(tDMPtr dm, Energy pwidth) {
+  // if zero width just set BR to zero
+  if(pwidth==ZERO) {
+    generator()->preinitInterface(dm, "BranchingRatio","set", "0.");
+    generator()->preinitInterface(dm, "OnOff","set", "Off");
+    return;
+  }
   //Need width and branching ratios for all currently created decay modes
   PDPtr parent = const_ptr_cast<PDPtr>(dm->parent());
   DecaySet modes = parent->decayModes();
@@ -316,11 +368,6 @@ void NBodyDecayConstructorBase::doinit() {
 }
 
 namespace {
-
-double factorial(const int i) {
-  if(i>1) return i*factorial(i-1);
-  else    return 1.;
-}
 
 void constructIdenticalSwaps(unsigned int depth,
 			     vector<vector<unsigned int> > identical,
@@ -401,7 +448,7 @@ void NBodyDecayConstructorBase::DecayList(const set<PDPtr> & particles) {
     for(unsigned int iv = 0; iv < nv; ++iv) {
       VertexBasePtr vertex = model->vertex(iv);
       if(excluded(vertex)) continue;
-      PrototypeVertex::createPrototypes(parent, vertex, prototypes);
+      PrototypeVertex::createPrototypes(parent, vertex, prototypes,this);
     }
     // now expand them into potential decay modes
     list<vector<PrototypeVertexPtr> > modes;
@@ -417,7 +464,7 @@ void NBodyDecayConstructorBase::DecayList(const set<PDPtr> & particles) {
 	  if(excluded(vertex) ||
 	     proto->npart+vertex->getNpoint()>numBodies()+2) continue;
 	  PrototypeVertex::expandPrototypes(proto,vertex,prototypes,
-					    excludedParticlesSet_);
+					    excludedParticlesSet_,this);
 	}
       }
       // multiplcity too high disgard

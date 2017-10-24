@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// TildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -75,4 +75,4 @@ void TildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeAbstractClass<TildeKinematics,HandlerBase>
-describeTildeKinematics("Herwig::TildeKinematics", "HwMatchbox.so");
+describeTildeKinematics("Herwig::TildeKinematics", "Herwig.so");

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipoleIOperator.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipoleIOperator.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_DipoleIOperator_H
@@ -12,8 +12,8 @@
 // This is the declaration of the DipoleIOperator class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
 
 namespace Herwig {
 
@@ -21,7 +21,7 @@ using namespace ThePEG;
 
 /**
  * \ingroup Matchbox
- * \author Simon Platzer
+ * \author Simon Platzer, Christian Reuschle
  *
  * \brief DipoleIOperator implements the I(\epsilon)
  * insertion operator.
@@ -51,6 +51,53 @@ public:
    * element this class represents virtual corrections to.
    */
   virtual void setXComb(tStdXCombPtr xc);
+  
+  /**
+   * Set parameters for new alpha parameter.
+   */
+  virtual void setAlpha (double alpha)const;
+
+  /**
+   * Return true, if this virtual correction
+   * applies to the given process.
+   */
+  virtual bool apply(const cPDVector&) const;
+
+  /**
+   * Return true, if contributions exist to
+   * the given parton.
+   */
+  bool apply(tcPDPtr) const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<int> NLightJetVec() const;
+
+  /**
+   * Return a vector of PDG codes of the heavy flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<int> NHeavyJetVec() const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the associated Born sub-process.
+   */
+  vector<int> NLightBornVec() const;
+
+  /**
+   * Return a vector of PDG codes of the heavy flavours,
+   * which are contained in the associated Born sub-process.
+   */
+  vector<int> NHeavyBornVec() const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the proton particle group.
+   */
+  vector<int> NLightProtonVec() const;
 
   /**
    * Evaluate the finite virtual correction for the
@@ -68,18 +115,6 @@ public:
    * If defined, return the coefficient of the pole in epsilon
    */
   virtual double oneLoopSinglePole() const;
-
-  /**
-   * Return true, if contributions exist to
-   * the given parton.
-   */
-  bool apply(tcPDPtr) const;
-
-  /**
-   * Return true, if this virtual correction
-   * applies to the given process.
-   */
-  virtual bool apply(const cPDVector&) const;
 
 public:
 
@@ -154,12 +189,12 @@ private:
   /**
    * K_q
    */
-  double KQuark;
+  mutable double KQuark;
 
   /**
    * K_g
    */
-  double KGluon;
+  mutable double KGluon;
 
 private:
 

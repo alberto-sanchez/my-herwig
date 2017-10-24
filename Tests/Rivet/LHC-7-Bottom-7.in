@@ -1,0 +1,33 @@
+# -*- ThePEG-repository -*-
+##################################################
+# Technical parameters for this run
+##################################################
+read snippets/PPCollider.in
+cd /Herwig/Generators
+set EventGenerator:MaxErrors 1000000
+set EventGenerator:EventHandler:StatLevel Full
+set /Herwig/Decays/DecayHandler:MaxLifeTime 10*mm
+##################################################
+#  Create the Herwig analysis
+##################################################
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+set /Herwig/Analysis/RivetAnalysis:Debug No
+cd /Herwig/MatrixElements
+set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 7000.0
+cp MEHeavyQuark MEBottom
+set MEBottom:QuarkType Bottom
+insert SubProcess:MatrixElements[0] MEBottom
+set /Herwig/UnderlyingEvent/MPIHandler:IdenticalToUE 0
+set /Herwig/Cuts/JetKtCut:MinKT 30.
+set /Herwig/Cuts/Cuts:MHatMin 340.*GeV
+
+
+cd /Herwig/Generators
+read LHC/LHC-7-Bottom-7.in
+
+##################################################
+# Save run for later usage with 'Herwig run'
+##################################################
+cd /Herwig/Generators
+saverun LHC-7-Bottom-7 EventGenerator

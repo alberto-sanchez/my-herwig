@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ColourBasis.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ColourBasis.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_ColourBasis_H
@@ -17,7 +17,8 @@
 #include "ThePEG/MatrixElement/Tree2toNDiagram.h"
 #include "ThePEG/MatrixElement/MEBase.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxXComb.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxXComb.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
 
 #include <iterator>
 
@@ -59,6 +60,28 @@ public:
   //@}
 
 public:
+
+  /**
+   * Return the factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr factory() const;
+
+  /**
+   * Set the factory which produced this matrix element
+   */
+  void factory(Ptr<MatchboxFactory>::tptr f);
+
+  /**
+   * Clone this colour basis.
+   */
+  Ptr<ColourBasis>::ptr cloneMe() const {
+    return dynamic_ptr_cast<Ptr<ColourBasis>::ptr>(clone());
+  }
+
+  /**
+   * Clear this colour basis
+   */
+  virtual void clear();
 
   /**
    * Prepare for the given sub process and return the basis
@@ -103,9 +126,9 @@ public:
    * sensible results for colour bases which implement the basisList
    * query.
    */
-  const vector<vector<size_t> >& ordering(const cPDVector& sub, 
-					  const map<size_t,size_t>& colourToAmplitude,
-					  size_t tensorId);
+  const set<vector<size_t> >& ordering(const cPDVector& sub, 
+				       const map<size_t,size_t>& colourToAmplitude,
+				       size_t tensorId, size_t shift = 0);
 
   /**
    * For the given subprocess and amplitude vectors
@@ -193,6 +216,11 @@ public:
 						 const map<vector<int>,CVector>& amps);
 
   /**
+   * Return the colour tensor used for the selected colour flow
+   */
+  size_t tensorIdFromFlow(tcDiagPtr diag, const ColourLines * cl);
+
+  /**
    * Match colour representation.
    */
   struct matchRep {
@@ -208,6 +236,11 @@ public:
    * Return true, if this basis is running in large-N mode
    */
   virtual bool largeN() const { return theLargeN; }
+
+  /**
+   * Switch to large n
+   */
+  void doLargeN(bool yes = true) { theLargeN = yes; }
 
   /**
    * Convert particle data to colour information
@@ -393,6 +426,11 @@ protected:
 
 private:
 
+  /**
+   * The factory which produced this matrix element
+   */
+  Ptr<MatchboxFactory>::tptr theFactory;
+
   typedef map<vector<PDT::Colour>,symmetric_matrix<double,upper> >
   ScalarProductMap;
 
@@ -405,11 +443,6 @@ private:
    * True, if this basis is running in large-N mode
    */
   bool theLargeN;
-
-  /**
-   * A search path for already calculated and stored matrices.
-   */
-  string theSearchPath;
 
   /**
    * Map external legs to normal ordered versions
@@ -459,12 +492,12 @@ private:
   /**
    * Store ordering identifiers
    */
-  map<vector<PDT::Colour>,map<map<size_t,size_t>,map<size_t,string> > > theOrderingStringIdentifiers;
+  map<cPDVector,map<size_t,string> > theOrderingStringIdentifiers;
 
   /**
    * Store ordering identifiers
    */
-  map<vector<PDT::Colour>,map<map<size_t,size_t>,map<size_t,vector<vector<size_t> > > > > theOrderingIdentifiers;
+  map<cPDVector,map<size_t,set<vector<size_t> > > > theOrderingIdentifiers;
 
   /**
    * Write out yet unknown basis computations.
@@ -524,6 +557,11 @@ private:
    * Temporary storage.
    */
   matrix<double> tmp;
+
+  /**
+   * The search path
+   */
+  string theSearchPath;
 
   /**
    * The assignment operator is private and must never be called.

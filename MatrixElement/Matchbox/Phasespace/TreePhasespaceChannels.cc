@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TreePhasespaceChannels.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// TreePhasespaceChannels.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -78,12 +78,12 @@ void TreePhasespaceChannels::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<TreePhasespaceChannels,HandlerBase>
-  describeHerwigTreePhasespaceChannels("Herwig::TreePhasespaceChannels", "HwMatchbox.so");
+  describeHerwigTreePhasespaceChannels("Herwig::TreePhasespaceChannels", "Herwig.so");
 
 void TreePhasespaceChannels::Init() {
 
   static ClassDocumentation<TreePhasespaceChannels> documentation
-    ("Store channels for the tree phasespace.");
+    ("Store channels for the tree phase space.");
 
 }
 

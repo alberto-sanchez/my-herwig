@@ -1,32 +1,39 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at the Z pole
+# base parameters for LEP analyses
 ##################################################
-read LEPBase.in
+read snippets/EECollider.in
+##################################################
+# Technical parameters for this run
+##################################################
+cd /Herwig/Generators
+set EventGenerator:MaxErrors 1000000
 
-create ThePEG::LuminosityFunction BFactoryLuminosity
-set BFactoryLuminosity:BeamEMaxA 5.225
-set BFactoryLuminosity:BeamEMaxB 5.225
-set /Herwig/Cuts/EECuts:MHatMin 9.99
+##################################################
+#  Switch off ISR
+##################################################
 set /Herwig/Particles/e-:PDF /Herwig/Partons/NoPDF
 set /Herwig/Particles/e+:PDF /Herwig/Partons/NoPDF
-set /Herwig/EventHandlers/LEPHandler:LuminosityFunction BFactoryLuminosity
 
 ##################################################
-# LEP physics parameters (override defaults) 
+#  Create the Herwig analysis
 ##################################################
-cd /Herwig/Generators
-set /Herwig/MatrixElements/MEee2gZ2qq:MinimumFlavour 1
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+##################################################
+#  Use the q qbar matrix element
+##################################################
+# default e+e- > q qbar (5 flavours d,u,s,c,b)
+insert  /Herwig/MatrixElements/SubProcess:MatrixElements 0 /Herwig/MatrixElements/MEee2gZ2qq
 set /Herwig/MatrixElements/MEee2gZ2qq:MaximumFlavour 4
-##################################################
-# select the analyses 
-##################################################
 
-# BELLE charm hadron production
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ARGUS_1993_S2789213
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 ARGUS_1993_S2669951
+set /Herwig/Shower/PartnerFinder:QEDPartner IIandFF
+
+read BFactory/BFactory-10.45.in
 
 ##################################################
-# Save run for later usage with 'Herwig++ run'
+# Save run for later usage with 'Herwig run'
 ##################################################
 cd /Herwig/Generators
-saverun BFactory-10.45 LEPGenerator
+saverun BFactory-10.45 EventGenerator

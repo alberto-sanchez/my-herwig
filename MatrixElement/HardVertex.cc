@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// HardVertex.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// HardVertex.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -26,7 +26,7 @@ void HardVertex::Init() {
   
   static ClassDocumentation<HardVertex> documentation
     ("The HardVertex class implements the vertex for a hard "
-     "interaction for the Herwig++ spin correlation algorithm");
+     "interaction for the Herwig spin correlation algorithm");
   
 }
  
@@ -35,10 +35,8 @@ RhoDMatrix HardVertex::getRhoMatrix(int i,bool) const {
   // get the rho matrices for the outgoing particles
   vector<RhoDMatrix> rhoout(outgoing().size()-1);
   for(int ix=0,N=outgoing().size();ix<N;++ix) {
-    if(ix<i)      rhoout[ix  ] = 
-		    outgoing()[ix]->DMatrix();
-    else if(ix>i) rhoout[ix-1] = 
-		    outgoing()[ix]->DMatrix();
+    if(ix<i)      rhoout[ix  ] = outgoing()[ix]->DMatrix();
+    else if(ix>i) rhoout[ix-1] = outgoing()[ix]->DMatrix();
   }
   // calculate the spin density matrix
   return _matrixelement.
@@ -53,7 +51,8 @@ RhoDMatrix HardVertex::getDMatrix(int i) const {
   vector<RhoDMatrix> rhoout(outgoing().size());
   for(unsigned int ix=0,N=outgoing().size();ix<N;++ix)
     rhoout[ix] = outgoing()[ix]->DMatrix();
+  unsigned int iother = i==0 ? 1 : 0;
   // calculate the decay matrix
   return _matrixelement.
-    calculateDMatrix(i,incoming()[1]->rhoMatrix(),rhoout);
+    calculateDMatrix(i,incoming()[iother]->rhoMatrix(),rhoout);
 }

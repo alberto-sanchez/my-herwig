@@ -13,7 +13,7 @@
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/PDT/EnumParticles.h"
 #include "ThePEG/MatrixElement/Tree2toNDiagram.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 
 using namespace Herwig;
 
@@ -64,8 +64,6 @@ void MEPP2WH::getDiagrams() const {
   bool wplus =_plusminus==0||_plusminus==1;
   bool wminus=_plusminus==0||_plusminus==2;
   tPDPtr higgs = getParticleData(ParticleID::h0);
-  // possible incoming particles
-  typedef std::vector<pair<long,long> > Pairvector;
   // possible parents
   vector<PDPair> parentpair;
   parentpair.reserve(6);
@@ -142,7 +140,7 @@ void MEPP2WH::doinit() {
   tcHwSMPtr hwsm= dynamic_ptr_cast<tcHwSMPtr>(standardModel());
   if(!hwsm)
     throw InitException() << "Wrong type of StandardModel object in "
-			  << "MEPP2WH::doinit() the Herwig++"
+			  << "MEPP2WH::doinit() the Herwig"
 			  << " version must be used" 
 			  << Exception::runerror;
   // set the vertex

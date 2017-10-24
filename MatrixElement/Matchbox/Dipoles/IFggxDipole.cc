@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IFggxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IFggxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,10 +20,10 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFLightTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFLightInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -46,7 +46,7 @@ bool IFggxDipole::canHandle(const cPDVector& partons,
     emitter < 2 && spectator > 1 &&
     partons[emission]->id() == ParticleID::g &&
     partons[emitter]->id() == ParticleID::g &&
-    partons[spectator]->mass() == ZERO;
+    partons[spectator]->hardProcessMass() == ZERO;
 }
 
 double IFggxDipole::me2Avg(double ccme2) const {
@@ -56,7 +56,7 @@ double IFggxDipole::me2Avg(double ccme2) const {
 
   double x = subtractionParameters()[0];
   double u = subtractionParameters()[1];
-
+  
   Energy2 prop = 
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
@@ -87,7 +87,10 @@ double IFggxDipole::me2() const {
 
   double x = subtractionParameters()[0];
   double u = subtractionParameters()[1];
-
+  
+  if ( alpha() < u )
+    return 0.0;
+  
   Energy2 prop = 
     2.*((realEmissionME()->lastXComb().meMomenta()[realEmitter()])*
 	(realEmissionME()->lastXComb().meMomenta()[realEmission()]))*x;
@@ -144,4 +147,4 @@ void IFggxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IFggxDipole,SubtractionDipole>
-describeHerwigIFggxDipole("Herwig::IFggxDipole", "HwMatchbox.so");
+describeHerwigIFggxDipole("Herwig::IFggxDipole", "Herwig.so");

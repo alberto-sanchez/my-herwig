@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipoleMIOperator.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipoleMIOperator.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_DipoleMIOperator_H
@@ -12,8 +12,8 @@
 // This is the declaration of the DipoleMIOperator class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
 
 namespace Herwig {
 
@@ -21,10 +21,13 @@ using namespace ThePEG;
 
 /**
  * \ingroup Matchbox
- * \author Simon Platzer, Martin Stoll
+ * \author Simon Platzer, Daniel Rauch, Christian Reuschle,
+ *         Martin Stoll
  *
- * \brief DipoleMIOperator implements the I(\epsilon)
- * insertion operator.
+ * \brief DipoleMIOperator implements the I(\epsilon) 
+ * insertion operator for the massive case.
+ * DipoleMIOperator does only apply for expanded con-
+ * vention and also not for dimensional reduction.
  *
  */
 class DipoleMIOperator: public MatchboxInsertionOperator {
@@ -53,6 +56,48 @@ public:
   virtual void setXComb(tStdXCombPtr xc);
 
   /**
+   * Return true, if this virtual correction
+   * applies to the given process.
+   */
+  virtual bool apply(const cPDVector&) const;
+
+  /**
+   * Return true, if contributions exist to
+   * the given parton.
+   */
+  bool apply(tcPDPtr) const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<int> NLightJetVec() const;
+
+  /**
+   * Return a vector of PDG codes of the heavy flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<int> NHeavyJetVec() const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the associated Born sub-process.
+   */
+  vector<int> NLightBornVec() const;
+
+  /**
+   * Return a vector of PDG codes of the heavy flavours,
+   * which are contained in the associated Born sub-process.
+   */
+  vector<int> NHeavyBornVec() const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the proton particle group.
+   */
+  vector<int> NLightProtonVec() const;
+
+  /**
    * Evaluate the finite virtual correction for the
    * variables supplied through the Born XComb object
    * and possible additional random numbers.
@@ -60,16 +105,14 @@ public:
   virtual double me2() const;
 
   /**
-   * Return true, if contributions exist to
-   * the given parton pair.
+   * If defined, return the coefficient of the pole in epsilon^2
    */
-  bool apply(tcPDPtr, tcPDPtr) const;
+  virtual double oneLoopDoublePole() const;
 
   /**
-   * Return true, if this virtual correction
-   * applies to the given process.
+   * If defined, return the coefficient of the pole in epsilon
    */
-  virtual bool apply(const cPDVector&) const;
+  virtual double oneLoopSinglePole() const;
 
 public:
   
@@ -123,7 +166,6 @@ protected:
   virtual IBPtr fullclone() const;
   //@}
 
-
 private:
 
   /**
@@ -147,14 +189,23 @@ private:
   double gammaGluon;
   
   /**
-   * \Gamma_q
+   * \beta_0
+   * The Matchbox convention is \beta_0=\gamma_g. Often however,
+   * \beta_0 is defined in the literature as \beta_0=2*\gamma_g.
+   * Be aware of consistent usage!
+   * In the massive case (see hep-ph/0011222v3):
+   *      \beta_0 = 11/3*C_A - 4/3*T_R*(N_f+N_F)
+   * with T_R=1/2, N_f the number of light flavours ,and N_F the
+   * number of heavy flavours, which originate in the splittings
+   * g->qqbar or g->QQbar.
+   * In our conventions, however:
+   *      \beta_0 = 11/6*C_A - 2/3*T_R*(N_f+N_F)
+   * The "massive" \beta_0 applies as soon as we define massive
+   * flavours in the jet particle group. Be aware that some OLP
+   * might generically(!) use something like N_f=5 and N_F=1 in
+   * their definition of \beta_0!
    */
-  double GammaQuark(const ParticleData&,Energy2) const;
-  
-  /**
-   * \Gamma_g
-   */
-  double GammaGluon() const;
+  double betaZero;
 
   /**
    * K_q
@@ -166,10 +217,43 @@ private:
    */
   double KGluon;
   
+private:
+
   /**
-   * V_j
+   * V_j, non-singular terms
    */
-  double Vj(const ParticleData&, const ParticleData&, Energy2,double,bool=false) const;
+  // double Vj(const ParticleData&, const ParticleData&, Energy2, double, bool=false) const;
+  double Vj(const ParticleData&, const ParticleData&, Energy2, double, double, int, bool=false) const;
+
+  /**
+   * V^{(s)}, double pole part in expanded convention.
+   */
+  double VsDoublePole(const ParticleData&, const ParticleData&) const;
+
+  /**
+   * V^{(s)}, single pole part in expanded convention.
+   */
+  double VsSinglePole(const ParticleData&, const ParticleData&, Energy2) const;
+
+  /**
+   * \Gamma_q, finite term
+   */
+  double GammaQuark(const ParticleData&) const;
+  
+  /**
+   * \Gamma_g, finite term
+   */
+  double GammaGluon() const;
+
+  /**
+   * \Gamma_q, single pole term
+   */
+  double GammaQuarkSinglePole(const ParticleData&) const;
+  
+  /**
+   * \Gamma_g, single pole term
+   */
+  double GammaGluonSinglePole() const;
 
 private:
 

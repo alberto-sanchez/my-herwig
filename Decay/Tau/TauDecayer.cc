@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TauDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// TauDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -25,7 +25,8 @@
 #include "ThePEG/Helicity/VectorSpinInfo.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorBarWaveFunction.h"
-#include "Herwig++/Decay/DecayVertex.h"
+#include "Herwig/Decay/DecayVertex.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 #include "ThePEG/Helicity/FermionSpinInfo.h"
 #include "ThePEG/StandardModel/StandardModelBase.h"
 
@@ -265,8 +266,9 @@ double TauDecayer::me2(const int ichan,const Particle & inpart,
     while(ix>0);
     _constants[decay.size()] = 1;
     _constants[0           ] = _constants[1];
-    ME(DecayMatrixElement(PDT::Spin1Half,_ispin));  
   }
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin1Half,_ispin)));  
   // connect the spininfo up if needed
   if(meopt==Terminate) {
     if(inpart.id()==ParticleID::tauminus) {
@@ -315,7 +317,7 @@ double TauDecayer::me2(const int ichan,const Particle & inpart,
     // element
     for(ihel[1]=0;ihel[1]<2;++ihel[1]){
       for(ihel[0]=0;ihel[0]<2;++ihel[0]) {
-	ME()(ihel)= lepton[ihel[0]][ihel[1]].dot(hadron[hhel])*
+	(*ME())(ihel)= lepton[ihel[0]][ihel[1]].dot(hadron[hhel])*
 	  SM().fermiConstant();
       }
     }
@@ -328,7 +330,7 @@ double TauDecayer::me2(const int ichan,const Particle & inpart,
     if(iq%2==0) ckm = SM().CKM(iq/2-1,(abs(ia)-1)/2);
     else        ckm = SM().CKM(abs(ia)/2-1,(iq-1)/2);
   }
-  return 0.5*pre*ckm*(ME().contract(_rho)).real();
+  return 0.5*pre*ckm*(ME()->contract(_rho)).real();
 }
   
 // output the setup information for the particle database

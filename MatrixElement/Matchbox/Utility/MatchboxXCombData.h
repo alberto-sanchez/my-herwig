@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxXCombData.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxXCombData.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MatchboxXCombData_H
@@ -12,16 +12,22 @@
 // This is the declaration of the MatchboxXCombData class.
 //
 
+// work around a Boost 1.64 bug where ublas headers would fail otherwise
+#include <boost/version.hpp>
+#if (BOOST_VERSION / 100 >= 1064)
+#include <boost/serialization/array_wrapper.hpp>
+#endif
+
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/symmetric.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 
 #include "ThePEG/MatrixElement/MEBase.h"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.fh"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 
 #include "ThePEG/Persistency/PersistentOStream.fh"
 #include "ThePEG/Persistency/PersistentIStream.fh"
@@ -164,6 +170,16 @@ namespace Herwig {
     void crossingSign(double c) { theCrossingSign = c; }
 
     /**
+     * The last renormalization scale
+     */
+    Energy2 lastRenormalizationScale() const { return theLastRenormalizationScale; }
+
+    /**
+     * The last renormalization scale
+     */
+    void lastRenormalizationScale(Energy2 lrs) { theLastRenormalizationScale = lrs; }
+
+    /**
      * The amplitude parton data.
      */
     const cPDVector& amplitudePartonData() const { return theAmplitudePartonData; }
@@ -255,6 +271,24 @@ namespace Herwig {
      */
     void lastTreeME2(double v) { 
       theLastTreeME2 = v; theCalculateTreeME2 = false;
+    }
+
+    /**
+     * True, if the tree-level matrix element squared needs to be
+     * calculated.
+     */
+    bool calculateLargeNME2() const { return theCalculateLargeNME2; }
+
+    /**
+     * The last tree-level matrix element squared
+     */
+    double lastLargeNME2() const { return theLastLargeNME2; }
+
+    /**
+     * The last tree-level matrix element squared
+     */
+    void lastLargeNME2(double v) { 
+      theLastLargeNME2 = v; theCalculateLargeNME2 = false;
     }
 
     /**
@@ -399,6 +433,37 @@ namespace Herwig {
     }
 
     /**
+     * True, if the indexed spin correlated matrix element needs to be
+     * calculated.
+     */
+    bool calculateSpinCorrelator(const pair<int,int>& ij) const {
+      map<pair<int,int>,bool>::const_iterator f =
+	theCalculateSpinCorrelators.find(ij);
+      if ( f == theCalculateSpinCorrelators.end() )
+	return true;
+      return f->second;
+    }
+
+    /**
+     * The spin correlated matrix element.
+     */
+    Complex lastSpinCorrelator(const pair<int,int>& ij) const {
+      map<pair<int,int>,Complex>::const_iterator v =
+	theSpinCorrelators.find(ij);
+      if ( v == theSpinCorrelators.end() )
+	return 0.;
+      return v->second;
+    }
+
+    /**
+     * The spin correlated matrix element.
+     */
+    void lastSpinCorrelator(const pair<int,int>& ij, Complex v) {
+      theSpinCorrelators[ij] = v;
+      theCalculateSpinCorrelators[ij] = false;
+    }
+
+    /**
      * Return the number of light flavours to be considered for this process.
      */
     unsigned int nLight() const { return theNLight; }
@@ -407,6 +472,48 @@ namespace Herwig {
      * Set the number of light flavours to be considered for this process.
      */
     void nLight(unsigned int n) { theNLight = n; }
+
+    /**
+     * Return the vector that contains the PDG ids of 
+     * the light flavours, which are contained in the
+     * jet particle group.
+     */
+    vector<long> nLightJetVec() const { return theNLightJetVec; }
+
+    /**
+     * Set the elements of the vector that contains the PDG
+     * ids of the light flavours, which are contained in the
+     * jet particle group.
+     */
+    void nLightJetVec(long n) { theNLightJetVec.push_back(n); }
+
+    /**
+     * Return the vector that contains the PDG ids of 
+     * the heavy flavours, which are contained in the
+     * jet particle group.
+     */
+    vector<long> nHeavyJetVec() const { return theNHeavyJetVec; }
+
+    /**
+     * Set the elements of the vector that contains the PDG
+     * ids of the heavy flavours, which are contained in the
+     * jet particle group.
+     */
+    void nHeavyJetVec(long n) { theNHeavyJetVec.push_back(n); }
+
+    /**
+     * Return the vector that contains the PDG ids of 
+     * the light flavours, which are contained in the
+     * proton particle group.
+     */
+    vector<long> nLightProtonVec() const { return theNLightProtonVec; }
+
+    /**
+     * Set the elements of the vector that contains the PDG
+     * ids of the light flavours, which are contained in the
+     * proton particle group.
+     */
+    void nLightProtonVec(long n) { theNLightProtonVec.push_back(n); }
 
     /**
      * Get the dimensionality of the colour basis for this process.
@@ -499,12 +606,12 @@ namespace Herwig {
     set<pair<size_t,size_t> >::const_iterator& lastSingularLimit() { return theLastSingularLimit; }
 
     /**
-     * Set the Herwig++ StandardModel object
+     * Set the Herwig StandardModel object
      */
     void hwStandardModel(Ptr<StandardModel>::tcptr sm) { theStandardModel = sm; }
 
     /**
-     * Get the Herwig++ StandardModel object
+     * Get the Herwig StandardModel object
      */
     Ptr<StandardModel>::tcptr hwStandardModel() const { return theStandardModel; }
 
@@ -547,7 +654,105 @@ namespace Herwig {
     /**
      * Fill the olp momentum vector
      */
-    void fillOLPMomenta(const vector<Lorentz5Momentum>&);
+    void fillOLPMomenta(const vector<Lorentz5Momentum>& mm,
+			const cPDVector& mePartonData = cPDVector(),
+			const map<long,Energy>& reshuffleMap = map<long,Energy>());
+
+    /**
+     * Helper struct to define the reshuffling equation
+     */
+    struct ReshuffleEquation {
+
+      ReshuffleEquation(Energy xq,
+			cPDVector::const_iterator xdBegin,
+			cPDVector::const_iterator xdEnd,
+			vector<Lorentz5Momentum>::const_iterator xmBegin,
+			const map<long,Energy>* xreshuffleMap)
+	: q(xq), dBegin(xdBegin), dEnd(xdEnd), mBegin(xmBegin),
+	  reshuffleMap(xreshuffleMap) {}
+
+      typedef double ArgType;
+      typedef double ValType;
+
+      static double aUnit() { return 1.; }
+      static double vUnit() { return 1.; }
+
+      double operator() (double xi) const;
+
+      Energy q;
+      cPDVector::const_iterator dBegin;
+      cPDVector::const_iterator dEnd;
+      vector<Lorentz5Momentum>::const_iterator mBegin;
+      const map<long,Energy>* reshuffleMap;
+
+    };
+
+    /**
+     * Perform a reshuffling to the mass shells contained in the map
+     */
+    void reshuffle(vector<Lorentz5Momentum>& momenta,
+		   const cPDVector& mePartonData,
+		   const map<long,Energy>& reshuffleMap) const;
+
+    /**
+     * Return a generic process id to communicate with external codes
+     */
+    int externalId() const { return theExternalId; }
+
+    /**
+     * Set a generic process id to communicate with external codes
+     */
+    void externalId(int id) { theExternalId = id; }
+
+    /**
+     * True if the process has been initialized
+     */
+    bool initialized() const { return theInitialized; }
+
+    /**
+     * True if the process has been initialized
+     */
+    void isInitialized(bool is = true) { theInitialized = is; }
+
+    /**
+     * Return the external momentum vector
+     */
+    const vector<double*>& externalMomenta() const { return theExternalMomenta; }
+
+    /**
+     * Fill the external momentum vector
+     */
+    void fillExternalMomenta(const vector<Lorentz5Momentum>&);
+    
+    /**
+     * Caching for the external madgraph colour structures
+     */
+    const map<vector<int>,vector < complex<double> > >& heljamp() const { return theHelJamp; }
+    
+    /**
+     * Caching for the external madgraph colour structures (large N)
+     */
+    const map<vector<int>,vector < complex<double> > >& helLNjamp() const { return theLNHelJamp; }
+    
+    /**
+     *  pushback the madgraph colour structures
+     */
+    void pushheljamp(const vector<int>& hel, const complex<double>& jamp) { theHelJamp[hel].push_back(jamp); }
+    
+    /**
+     * clear the madgraph colour structures
+     */
+    void clearheljamp() { theHelJamp.clear(); }
+        
+    /**
+     *  pushback the madgraph colour structures (large N)
+     */
+    void pushhelLNjamp(const vector<int>& hel, const complex<double>& jamp) { theLNHelJamp[hel].push_back(jamp); }
+    
+    /**
+     * clear the madgraph colour structures (large N)
+     */
+    void clearhelLNjamp() { theLNHelJamp.clear(); }
 
   public:
 
@@ -645,6 +850,11 @@ namespace Herwig {
     double theCrossingSign;
 
     /**
+     * The last renormalization scale
+     */
+    Energy2 theLastRenormalizationScale;
+
+    /**
      * The amplitude parton data.
      */
     cPDVector theAmplitudePartonData;
@@ -692,6 +902,17 @@ namespace Herwig {
      * The last tree-level matrix element squared
      */
     double theLastTreeME2;
+
+    /**
+     * True, if the tree-level matrix element squared needs to be
+     * calculated.
+     */
+    bool theCalculateLargeNME2;
+
+    /**
+     * The last tree-level matrix element squared
+     */
+    double theLastLargeNME2;
 
     /**
      * True, if the one-loop/tree-level interference.
@@ -749,9 +970,38 @@ namespace Herwig {
     map<pair<int,int>,Complex> theColourSpinCorrelators;
 
     /**
+     * True, if the indexed spin correlated matrix element needs to be
+     * calculated.
+     */
+    map<pair<int,int>,bool> theCalculateSpinCorrelators;
+
+    /**
+     * The spin correlated matrix element.
+     */
+    map<pair<int,int>,Complex> theSpinCorrelators;
+
+    /**
      * The number of light flavours to be considered for this process.
      */
-    unsigned int theNLight;
+    static unsigned int theNLight;
+
+    /**
+     * Vector with the PDG ids of the light quark flavours,
+     * which are contained in the jet particle group.
+     */
+    static vector<long> theNLightJetVec;
+
+    /**
+     * Vector with the PDG ids of the heavy quark flavours,
+     * which are contained in the jet particle group.
+     */
+    static vector<long> theNHeavyJetVec;
+
+    /**
+     * Vector with the PDG ids of the light quark flavours,
+     * which are contained in the proton particle group.
+     */
+    static vector<long> theNLightProtonVec;
 
     /**
      * The dimensionality of the colour basis for this process.
@@ -801,7 +1051,7 @@ namespace Herwig {
     set<pair<size_t,size_t> >::const_iterator theLastSingularLimit;
 
     /**
-     * The Herwig++ StandardModel object
+     * The Herwig StandardModel object
      */
     Ptr<StandardModel>::tcptr theStandardModel;
 
@@ -824,6 +1074,36 @@ namespace Herwig {
      * True, if olp momenta have been filled
      */
     bool filledOLPMomenta;
+
+    /**
+     * A generic process id to communicate with external codes
+     */
+    int theExternalId;
+
+    /**
+     * True if the process has been initialized
+     */
+    bool theInitialized;
+
+    /**
+     * The external momenta
+     */
+    vector<double*> theExternalMomenta;
+
+    /**
+     * True, if external momenta have been filled
+     */
+    bool filledExternalMomenta;
+    
+    /**
+     * caching of different colour structures (MadGraph-Interface)
+     */
+    map<vector<int>,vector < complex<double> > > theHelJamp;    
+	
+    /**
+     * caching of different colour structures (MadGraph-Interface)
+     */
+    map<vector<int>,vector < complex<double> > > theLNHelJamp;
 
   };
 

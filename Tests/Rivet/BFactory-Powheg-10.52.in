@@ -1,31 +1,39 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at the Z pole
+# base parameters for LEP analyses
 ##################################################
-read LEPBase-Powheg.in
+read snippets/EECollider.in
+##################################################
+# Technical parameters for this run
+##################################################
+cd /Herwig/Generators
+read Matchbox/Powheg-Default-ShowerAlphaSTune.in
+set EventGenerator:MaxErrors 1000000
 
-create ThePEG::LuminosityFunction BFactoryLuminosity
-set BFactoryLuminosity:BeamEMaxA 3.5*GeV
-set BFactoryLuminosity:BeamEMaxB 7.91*GeV
-set /Herwig/Cuts/EECuts:MHatMin 9.99
+##################################################
+#  Switch off ISR
+##################################################
 set /Herwig/Particles/e-:PDF /Herwig/Partons/NoPDF
 set /Herwig/Particles/e+:PDF /Herwig/Partons/NoPDF
-set /Herwig/EventHandlers/LEPHandler:LuminosityFunction BFactoryLuminosity
 
 ##################################################
-# LEP physics parameters (override defaults) 
+#  Create the Herwig analysis
 ##################################################
-cd /Herwig/Generators
-set /Herwig/MatrixElements/PowhegMEee2gZ2qq:MinimumFlavour 1
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+##################################################
+#  Use the NLO q qbar matrix element
+##################################################
+set /Herwig/Shower/ShowerHandler:HardEmission POWHEG
+insert /Herwig/MatrixElements/SubProcess:MatrixElements 0 /Herwig/MatrixElements/PowhegMEee2gZ2qq
 set /Herwig/MatrixElements/PowhegMEee2gZ2qq:MaximumFlavour 4
-##################################################
-# select the analyses 
-##################################################
 
-# BELLE charm hadron production
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 BELLE_2006_S6265367
+
+read BFactory/BFactory-10.52.in
 
 ##################################################
-# Save run for later usage with 'Herwig++ run'
+# Save run for later usage with 'Herwig run'
 ##################################################
 cd /Herwig/Generators
-saverun BFactory-Powheg-10.52 LEPGenerator
+saverun BFactory-Powheg-10.52 EventGenerator

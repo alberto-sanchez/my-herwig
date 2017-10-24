@@ -1,14 +1,14 @@
 // -*- C++ -*-
 //
-// PhasespaceHelpers.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// PhasespaceHelpers.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 
 #include "PhasespaceHelpers.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/RandomHelpers.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/RandomHelpers.h"
 
 using namespace Herwig;
 using namespace Herwig::PhasespaceHelpers;
@@ -25,8 +25,11 @@ Energy PhasespaceInfo::generateMass(tcPDPtr data,
   if ( range.second < ZERO )
     xup = -xup;
 
-  double mu = sqr(data->mass())/sHat;
-  double gamma = sqr(data->width())/sHat;
+  double mu = sqr(data->hardProcessMass())/sHat;
+  double gamma = sqr(data->hardProcessWidth())/sHat;
+
+  if ( gamma < 1e-14 )
+    gamma = 0.0;
 
   if ( M0 != ZERO )
     x0 = M0/sqrtSHat;
@@ -142,6 +145,9 @@ Energy PhasespaceInfo::generateMass(tcPDPtr data,
     event = generate(breitWigner(mu,gamma,xlow,xup),r);
   }
 
+  if ( abs(event.first) < xc ) 
+    throw Veto();
+
   weight *= event.second;
 
   Energy res = sqrt(abs(event.first)*sHat);
@@ -168,6 +174,7 @@ Lorentz5Momentum PhasespaceInfo::generateKt(const Lorentz5Momentum& p1,
   bool boost =
     abs((P-Q).vect().mag2()/GeV2) > 1e-8 ||
     abs((P-Q).t()/GeV) > 1e-4;
+  boost &= (P*Q-Q.mass2())/GeV2 > 1e-8;
 
   Lorentz5Momentum inFrame1;
   if ( boost )
@@ -262,8 +269,6 @@ void PhasespaceTree::setupMirrored(const Tree2toNDiagram& diag,
       make_pair(-1,-1);
 
   data = diag.allPartons()[pos];
-  
-  //  cerr << "pos= " << pos << " " << data->PDGName() << " " << diag.externalId(pos) << "  next up: " << diag.parent(pos) << " " << diag.children(diag.parent(pos)).second << "\n" << flush;
 
   if ( pos == diag.nSpace() - 1 )
     externalId = 1;
@@ -405,7 +410,7 @@ void PhasespaceTree::generateKinematics(PhasespaceInfo& info,
 
     // perform the decay
     Energy4 lambda2 = sqr(mij2-mi2-mj2)-4.*mi2*mj2;
-    if ( lambda2 < ZERO )
+    if ( lambda2 <= ZERO )
       throw Veto();
     Energy2 lambda = sqrt(lambda2);
     double phi = 2.*Constants::pi*info.rnd();
@@ -421,10 +426,8 @@ void PhasespaceTree::generateKinematics(PhasespaceInfo& info,
     children[0].momentum.setY(p*sinPhi*sinTheta);
     children[0].momentum.setZ(p*cosTheta);
     children[0].momentum.rescaleEnergy();
-    if ( momentum.m2() <= ZERO ) {
-      cerr << "cannot boost in decay ... " << (momentum.m2()/GeV2) << "\n";
+    if ( momentum.m2() <= ZERO )
       throw Veto();
-    }
     Boost out = momentum.boostVector();
     if ( out.mag2() > Constants::epsilon ) {
       children[0].momentum.boost(out);

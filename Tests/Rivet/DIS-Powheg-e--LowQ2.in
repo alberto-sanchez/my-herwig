@@ -1,26 +1,46 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at HERA
+# Example generator based on DIS parameters
+# usage: Herwig read DIS.in
 ##################################################
-read DISBase-Powheg.in
+read snippets/EPCollider.in
+read Matchbox/Powheg-Default-ShowerAlphaSTune.in
+
+set /Herwig/Particles/e-:PDF /Herwig/Partons/NoPDF
+set /Herwig/Particles/e+:PDF /Herwig/Partons/NoPDF
+##################################################
+#  Need to use an NLO PDF
+##################################################
+set /Herwig/Particles/p+:PDF    /Herwig/Partons/HardNLOPDF
+set /Herwig/Particles/pbar-:PDF /Herwig/Partons/HardNLOPDF
+set /Herwig/Shower/ShowerHandler:PDFB /Herwig/Partons/ShowerLOPDF
+set /Herwig/Partons/MPIExtractor:SecondPDF  /Herwig/Partons/MPIPDF
+set /Herwig/Partons/EPExtractor:SecondPDF  /Herwig/Partons/HardNLOPDF
 
 ##################################################
-# DIS parameters
+#  Setup the POWHEG shower
+##################################################
+cd /Herwig/Shower
+set ShowerHandler:IntrinsicPtGaussian 1.9*GeV
+set ShowerHandler:HardEmission POWHEG
+
+cd /Herwig/MatrixElements/
+# Neutral current DIS
+
+insert SubProcess:MatrixElements[0] /Herwig/MatrixElements/PowhegMEDISNC
+
+cd /Herwig/Generators
+set EventGenerator:MaxErrors 1000000
+set /Herwig/Shower/ShowerHandler:MPIHandler NULL
+cd /Herwig/Generators
+
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+read DIS/DIS-e--LowQ2.in
+
+##################################################
+# Save run for later usage with 'Herwig run'
 ##################################################
 cd /Herwig/Generators
-set /Herwig/EventHandlers/DISHandler:BeamB /Herwig/Particles/p+
-set /Herwig/EventHandlers/DISLuminosity:BeamEMaxB 820.*GeV
-set /Herwig/EventHandlers/DISHandler:BeamA /Herwig/Particles/e-
-set /Herwig/EventHandlers/DISLuminosity:BeamEMaxA 26.7*GeV
-set /Herwig/Cuts/NeutralCurrentCut:MinW2 1000.
-set /Herwig/Cuts/NeutralCurrentCut:MaxW2 1000000.
-set /Herwig/Cuts/NeutralCurrentCut:MaxQ2 60.
-set /Herwig/Cuts/NeutralCurrentCut:MinQ2 2.5
-set /Herwig/Cuts/DISCuts:MHatMin 0.
-
-# H1 energy flow analysis
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 H1_1994_S2919893
-#insert /Herwig/Analysis/RivetAnalysis:Analyses 0 H1_1995_S3167097
-
-
-cd /Herwig/Generators
-saverun DIS-Powheg-e--LowQ2 DISGenerator
+saverun DIS-Powheg-e--LowQ2 EventGenerator

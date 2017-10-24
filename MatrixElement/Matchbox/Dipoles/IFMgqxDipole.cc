@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IFMgqxDipole.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IFMgqxDipole.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -20,9 +20,9 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 
-#include "Herwig++/MatrixElement/Matchbox/Base/DipoleRepository.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/IFLightInvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Base/DipoleRepository.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFMassiveTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/IFMassiveInvertedTildeKinematics.h"
 
 using namespace Herwig;
 
@@ -44,9 +44,9 @@ bool IFMgqxDipole::canHandle(const cPDVector& partons,
   return
     emitter < 2 && spectator > 1 &&
     partons[emitter]->id() == ParticleID::g &&
-    abs(partons[emission]->id()) < 6 &&
-    !(partons[emission]->mass() == ZERO &&
-      partons[spectator]->mass() == ZERO);
+    abs(partons[emission]->id()) < 7 &&
+    partons[emission]->hardProcessMass() == ZERO &&
+    partons[spectator]->hardProcessMass() != ZERO;
 }
 
 double IFMgqxDipole::me2Avg(double ccme2) const {
@@ -122,8 +122,8 @@ void IFMgqxDipole::Init() {
   static ClassDocumentation<IFMgqxDipole> documentation
     ("IFMgqxDipole");
 
-  DipoleRepository::registerDipole<0,IFMgqxDipole,IFLightTildeKinematics,IFLightInvertedTildeKinematics>
-    ("IFMgqxDipole","IFLightTildeKinematics","IFLightInvertedTildeKinematics");
+  DipoleRepository::registerDipole<0,IFMgqxDipole,IFMassiveTildeKinematics,IFMassiveInvertedTildeKinematics>
+    ("IFMgqxDipole","IFMassiveTildeKinematics","IFMassiveInvertedTildeKinematics");
 
 }
 
@@ -133,4 +133,4 @@ void IFMgqxDipole::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IFMgqxDipole,SubtractionDipole>
-describeHerwigIFMgqxDipole("Herwig::IFMgqxDipole", "HwMatchbox.so");
+describeHerwigIFMgqxDipole("Herwig::IFMgqxDipole", "Herwig.so");

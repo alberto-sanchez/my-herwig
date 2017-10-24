@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ColourBasis.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ColourBasis.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -16,9 +16,11 @@
 #include "ThePEG/Interface/Parameter.h"
 #include "ThePEG/Interface/Switch.h"
 #include "ThePEG/EventRecord/Particle.h"
+#include "ThePEG/Handlers/SamplerBase.h"
 #include "ThePEG/Repository/UseRandom.h"
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.h"
 
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
@@ -43,8 +45,16 @@ using boost::numeric::ublas::row;
 using boost::numeric::ublas::column;
 using boost::numeric::ublas::prod;
 
+Ptr<MatchboxFactory>::tptr ColourBasis::factory() const {
+  return theFactory;
+}
+
+void ColourBasis::factory(Ptr<MatchboxFactory>::tptr f) {
+  theFactory = f;
+}
+
 ColourBasis::ColourBasis() 
-  : theLargeN(false), theSearchPath("."), didRead(false), didWrite(false) {}
+  : theLargeN(false), didRead(false), didWrite(false), theSearchPath("") {}
 
 ColourBasis::~ColourBasis() {
   for ( map<Ptr<Tree2toNDiagram>::tcptr,vector<ColourLines*> >::iterator cl =
@@ -58,6 +68,22 @@ ColourBasis::~ColourBasis() {
   theColourLineMap.clear();
 }
 
+void ColourBasis::clear() {
+  theLargeN = false;
+  theNormalOrderedLegs.clear();
+  theIndexMap.clear();
+  theScalarProducts.clear();
+  theCharges.clear();
+  theChargeNonZeros.clear();
+  theCorrelators.clear();
+  theFlowMap.clear();
+  theColourLineMap.clear();
+  theOrderingStringIdentifiers.clear();
+  theOrderingIdentifiers.clear();
+  didRead = false;
+  didWrite = false;
+  tmp.clear();
+}
 
 // If needed, insert default implementations of virtual function defined
 // in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
@@ -86,63 +112,77 @@ const string& ColourBasis::orderingString(const cPDVector& sub,
 					  const map<size_t,size_t>& colourToAmplitude,
 					  size_t tensorId) {
 
-  const vector<PDT::Colour>& basis = normalOrderedLegs(sub);
+  map<size_t,string>& tensors = theOrderingStringIdentifiers[sub];
+  if ( !tensors.empty() ) {
+    assert(tensors.find(tensorId) != tensors.end());
+    return tensors[tensorId];
+  }
 
-  map<size_t,string>& orderings = theOrderingStringIdentifiers[basis][colourToAmplitude];
+  const set<vector<size_t> >& xordering = ordering(sub,colourToAmplitude,tensorId);
 
-  if ( orderings.empty() ) {
-    map<size_t,vector<vector<size_t> > > tensors =
-      basisList(basis);
-    for ( map<size_t,vector<vector<size_t> > >::const_iterator t =
-	    tensors.begin(); t != tensors.end(); ++t ) {
-      ostringstream oid;
-      for ( vector<vector<size_t> >::const_iterator s = t->second.begin();
-	    s != t->second.end(); ++s ) {
-	oid << "[";
-	for ( vector<size_t>::const_iterator l = s->begin();
-	      l != s->end(); ++l ) {
-	  map<size_t,size_t>::const_iterator trans = 
-	    colourToAmplitude.find(*l);
-	  assert(trans != colourToAmplitude.end());
-	  oid << trans->second << (l != --(s->end()) ? "," : "");
-	}
-	oid << "]";
+  ostringstream os;
+  os << "[";
+  for ( set<vector<size_t> >::const_iterator t = xordering.begin();
+	t != xordering.end(); ++t ) {
+    os << "[";
+    for ( vector<size_t>::const_iterator s = t->begin();
+	  s != t->end(); ++s ) {
+      os << *s << (s != --t->end() ? "," : "");
+    }
+    os << "]" << (t != --xordering.end() ? "," : "");
+  }
+  os << "]";
+
+  tensors[tensorId] = os.str();
+  return tensors[tensorId];
+
+}
+
+const set<vector<size_t> >& ColourBasis::ordering(const cPDVector& sub, 
+						  const map<size_t,size_t>& colourToAmplitude,
+						  size_t tensorId, size_t shift) {
+
+  map<size_t,set<vector<size_t> > >& tensors = theOrderingIdentifiers[sub];
+  if ( !tensors.empty() ) {
+    assert(tensors.find(tensorId) != tensors.end());
+    return tensors[tensorId];
+  }
+
+  const vector<PDT::Colour>& basisId = normalOrderedLegs(sub);
+
+  map<size_t,vector<vector<size_t> > > labels = basisList(basisId);
+
+  for ( map<size_t,vector<vector<size_t> > >::const_iterator t =
+	  labels.begin(); t != labels.end(); ++t ) {
+    set<vector<size_t> > xordering;
+    for ( vector<vector<size_t> >::const_iterator s = t->second.begin();
+	  s != t->second.end(); ++s ) {
+      vector<size_t> crossed;
+      for ( vector<size_t>::const_iterator l = s->begin();
+	    l != s->end(); ++l ) {
+	map<size_t,size_t>::const_iterator trans = 
+	  colourToAmplitude.find(*l);
+	assert(trans != colourToAmplitude.end());
+	crossed.push_back(trans->second + shift);
       }
-      orderings[t->first] = oid.str();
+      xordering.insert(crossed);
     }
+    tensors[t->first] = xordering;
   }
 
-  return orderings[tensorId];
+  assert(tensors.find(tensorId) != tensors.end());
+  return tensors[tensorId];
 
 }
-
-const vector<vector<size_t> >& ColourBasis::ordering(const cPDVector& sub, 
-						     const map<size_t,size_t>& colourToAmplitude,
-						     size_t tensorId) {
-
-  const vector<PDT::Colour>& basis = normalOrderedLegs(sub);
-
-  map<size_t,vector<vector<size_t> > >& orderings = theOrderingIdentifiers[basis][colourToAmplitude];
-
-  if ( orderings.empty() ) {
-    map<size_t,vector<vector<size_t> > > tensors =
-      basisList(basis);
-    for ( map<size_t,vector<vector<size_t> > >::const_iterator t =
-	    tensors.begin(); t != tensors.end(); ++t ) {
-      orderings[t->first] = t->second;
-    }
-  }
-
-  return orderings[tensorId];
-
-}
-
 
 vector<PDT::Colour> ColourBasis::normalOrderMap(const cPDVector& sub) {
 
   vector<PDT::Colour> allLegs = projectColour(sub);
   vector<PDT::Colour> legs = normalOrder(allLegs);
 
+    // if no coloured legs.
+  if(legs.empty())return legs;
+  
   if ( allLegs[0] == PDT::Colour3 )
     allLegs[0] = PDT::Colour3bar;
   else if ( allLegs[0] == PDT::Colour3bar )
@@ -192,6 +232,14 @@ size_t ColourBasis::prepare(const cPDVector& sub,
 
   if ( theNormalOrderedLegs.find(sub) == theNormalOrderedLegs.end() )
     theNormalOrderedLegs[sub] = legs;
+  
+    //if no coloured legs.
+  if(legs.empty()){
+    auto sp = symmetric_matrix<double,upper>(1,1);
+    sp(0,0)=1.;
+    theScalarProducts.insert({ legs , sp });
+    return 0;
+  }
   
   if ( theScalarProducts.find(legs) == theScalarProducts.end() )
     doPrepare = true;
@@ -331,6 +379,9 @@ vector<string> ColourBasis::makeFlows(Ptr<Tree2toNDiagram>::tcptr diag,
 
   vector<string> res(dim);
 
+   //if no coloured legs.
+  if(dim==0)return res;
+
   list<list<list<pair<int,bool> > > > fdata =
     colourFlows(diag);
 
@@ -359,6 +410,8 @@ vector<string> ColourBasis::makeFlows(Ptr<Tree2toNDiagram>::tcptr diag,
 	}
       }
       if ( matches ) {
+	assert(res[i] == "" && 
+	       "only support colour bases with unique mapping to large-N colour flows");
 	res[i] = cfstring(*flow);
       }
     }
@@ -709,13 +762,23 @@ Selector<const ColourLines *> ColourBasis::colourGeometries(tcDiagPtr diag,
   assert(dd && theFlowMap.find(dd) != theFlowMap.end());
   map<Ptr<Tree2toNDiagram>::tcptr,vector<ColourLines*> >::const_iterator colit =
     colourLineMap().find(dd);
-  if ( colit == colourLineMap().end() )
+  if ( colit == colourLineMap().end() ) {
     updateColourLines(dd);
-  colit = colourLineMap().find(dd);
+    colit = colourLineMap().find(dd);
+  }
   const vector<ColourLines*>& cl = colit->second;
 
   Selector<const ColourLines *> sel;
   size_t dim = amps.begin()->second.size();
+  
+    // special treatment if no coloured legs.
+    // as in e.g. MEee2gZ2ll.cc
+  if (cl.empty()){
+    static ColourLines ctST(" ");
+    sel.insert(1.,&ctST);
+    return sel;
+  }
+  
   assert(dim == cl.size());
   double w = 0.;
   for ( size_t i = 0; i < dim; ++i ) {
@@ -730,6 +793,32 @@ Selector<const ColourLines *> ColourBasis::colourGeometries(tcDiagPtr diag,
   }
   assert(!sel.empty());
   return sel;
+}
+
+size_t ColourBasis::tensorIdFromFlow(tcDiagPtr diag, const ColourLines * flow) {
+
+ Ptr<Tree2toNDiagram>::tcptr dd = 
+    dynamic_ptr_cast<Ptr<Tree2toNDiagram>::tcptr>(diag);
+  assert(dd && theFlowMap.find(dd) != theFlowMap.end());
+  map<Ptr<Tree2toNDiagram>::tcptr,vector<ColourLines*> >::const_iterator colit =
+    colourLineMap().find(dd);
+  if ( colit == colourLineMap().end() ) {
+    updateColourLines(dd);
+    colit = colourLineMap().find(dd);
+  }
+
+  const vector<ColourLines*>& cl = colit->second;
+
+  size_t res = 0;
+  for ( ; res < cl.size(); ++res ) {
+    if ( flow == cl[res] )
+      break;
+  }
+
+  assert(res < cl.size());
+
+  return res;
+
 }
 
 const symmetric_matrix<double,upper>& ColourBasis::scalarProducts(const cPDVector& sub) const {
@@ -850,7 +939,7 @@ double ColourBasis::interference(const cPDVector& sub,
     res += 2.*real(inner_prod(boost::numeric::ublas::conj(a->second),prod(sp,b->second)));
   }
 
-  assert(!isnan(res));
+  assert(!std::isnan(res));
 
   return res;
 
@@ -940,6 +1029,8 @@ vector<PDT::Colour> ColourBasis::projectColour(const cPDVector& sub) const {
 }
 
 vector<PDT::Colour> ColourBasis::normalOrder(const vector<PDT::Colour>& legs) const {
+    //if no coloured legs.
+  if (legs.empty())return legs;
   vector<PDT::Colour> crosslegs = legs;
   if ( crosslegs[0] == PDT::Colour3 )
     crosslegs[0] = PDT::Colour3bar;
@@ -963,7 +1054,7 @@ vector<PDT::Colour> ColourBasis::normalOrder(const vector<PDT::Colour>& legs) co
 
 string ColourBasis::file(const vector<PDT::Colour>& sub) const {
 
-  string res = "";
+  string res = name() + "-";
 
   for ( vector<PDT::Colour>::const_iterator lit = sub.begin();
 	lit != sub.end(); ++lit ) {
@@ -1002,13 +1093,16 @@ void ColourBasis::writeBasis(const string& prefix) const {
   for ( set<vector<PDT::Colour> >::const_iterator known = legs.begin();
 	known != legs.end(); ++known ) {
     string fname = searchPath + prefix + file(*known) + ".cdat";
-    ifstream check(fname.c_str());
-    if ( check ) continue;
+    if ( !( SamplerBase::runLevel() == SamplerBase::ReadMode ||
+            SamplerBase::runLevel() == SamplerBase::BuildMode ) ) {
+      ifstream check(fname.c_str());
+      if ( check ) continue;
+    }
     ofstream out(fname.c_str());
     if ( !out )
-      throw Exception() << "ColourBasis failed to open "
+      throw Exception() << "ColourBasis: Failed to open "
 			<< fname << " for storing colour basis information."
-			<< Exception::abortnow;
+			<< Exception::runerror;
     out << setprecision(18);
     const symmetric_matrix<double,upper>& sp = 
       theScalarProducts.find(*known)->second;
@@ -1094,11 +1188,19 @@ void ColourBasis::readBasis() {
 	known != legs.end(); ++known ) {
     if ( theScalarProducts.find(*known) != theScalarProducts.end() )
       continue;
+    //if no coloured legs.
+    if(known->empty()){
+      auto sp = symmetric_matrix<double,upper>(1,1);
+      sp(0,0)=1.;
+      theScalarProducts.insert({ *known , sp });
+      continue;
+    }
+     
     string fname = searchPath + file(*known) + ".cdat";
     if ( !readBasis(*known) )
-      throw Exception() << "ColourBasis failed to open "
+      throw Exception() << "ColourBasis: Failed to open "
 			<< fname << " for reading colour basis information."
-			<< Exception::abortnow;
+			<< Exception::runerror;
   }
 
   didRead = true;
@@ -1149,6 +1251,8 @@ void ColourBasis::read(compressed_matrix<double>& m, istream& is,
 
 void ColourBasis::doinit() {
   HandlerBase::doinit();
+  if ( theSearchPath.empty() && factory() )
+    theSearchPath = factory()->runStorage();
   readBasis();
 }
 
@@ -1159,19 +1263,22 @@ void ColourBasis::dofinish() {
 
 void ColourBasis::doinitrun() {
   HandlerBase::doinitrun();
+  if ( theSearchPath.empty() && factory() )
+    theSearchPath = factory()->runStorage();
   readBasis();
 }
 
 void ColourBasis::persistentOutput(PersistentOStream & os) const {
-  os << theLargeN << theSearchPath << theNormalOrderedLegs
-     << theIndexMap << theFlowMap << theOrderingStringIdentifiers << theOrderingIdentifiers;
+  os << theLargeN << theNormalOrderedLegs
+     << theIndexMap << theFlowMap << theOrderingStringIdentifiers 
+     << theOrderingIdentifiers << theFactory << theSearchPath;
   writeBasis();
 }
 
 void ColourBasis::persistentInput(PersistentIStream & is, int) {
-  is >> theLargeN >> theSearchPath >> theNormalOrderedLegs
-     >> theIndexMap >> theFlowMap >> theOrderingStringIdentifiers >> theOrderingIdentifiers;
-  readBasis();
+  is >> theLargeN >> theNormalOrderedLegs
+     >> theIndexMap >> theFlowMap >> theOrderingStringIdentifiers
+     >> theOrderingIdentifiers >> theFactory >> theSearchPath;
 }
 
 
@@ -1181,7 +1288,7 @@ void ColourBasis::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeAbstractClass<ColourBasis,HandlerBase>
-describeColourBasis("Herwig::ColourBasis", "HwMatchbox.so");
+describeColourBasis("Herwig::ColourBasis", "Herwig.so");
 
 void ColourBasis::Init() {
 
@@ -1189,25 +1296,18 @@ void ColourBasis::Init() {
     ("ColourBasis is an interface to a colour basis "
      "implementation.");
 
-
-  static Parameter<ColourBasis,string> interfaceSearchPath
-    ("SearchPath",
-     "Set the search path for pre-computed colour basis data.",
-     &ColourBasis::theSearchPath, ".",
-     false, false);
-
   static Switch<ColourBasis,bool> interfaceLargeN
     ("LargeN",
      "Switch on or off large-N evaluation.",
      &ColourBasis::theLargeN, false, false, false);
-  static SwitchOption interfaceLargeNOn
+  static SwitchOption interfaceLargeNYes
     (interfaceLargeN,
-     "On",
+     "Yes",
      "Work in N=infinity",
      true);
-  static SwitchOption interfaceLargeNOff
+  static SwitchOption interfaceLargeNNo
     (interfaceLargeN,
-     "Off",
+     "No",
      "Work in N=3",
      false);
 

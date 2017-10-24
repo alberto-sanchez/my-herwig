@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxPhasespace.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxPhasespace.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MatchboxPhasespace_H
@@ -15,9 +15,10 @@
 #include "ThePEG/Handlers/StandardXComb.h"
 #include "ThePEG/Handlers/HandlerBase.h"
 #include "ThePEG/MatrixElement/Tree2toNDiagram.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/ProcessData.fh"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/ProcessData.fh"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/PhasespaceCouplings.h"
 
 namespace Herwig {
 
@@ -138,7 +139,13 @@ public:
    * Return the number of random numbers required to produce a given
    * multiplicity final state.
    */
-  virtual int nDim(int nFinal) const = 0;
+  virtual int nDim(const cPDVector&) const;
+
+  /**
+   * Return the number of random numbers required to produce a given
+   * multiplicity final state.
+   */
+  virtual int nDimPhasespace(int nFinal) const = 0;
 
   /**
    * Return true, if this phasespace generator will generate incoming
@@ -255,6 +262,16 @@ public:
    */
   bool matchConstraints(const vector<Lorentz5Momentum>& momenta);
 
+protected:
+
+  /**
+   * Set a coupling for the given vertex; the convention is that all
+   * legs are outgoing, and all possible crossings will be taken care
+   * of. If not set, coupling weights default to one.
+   */
+  void setCoupling(long a, long b, long c,
+		   double coupling, bool includeCrossings = true);
+
 public:
 
   /** @name Functions used by the persistent I/O system. */
@@ -299,6 +316,35 @@ private:
    * True, if mass generators should be used instead of fixed masses
    */
   bool theUseMassGenerators;
+
+  /**
+   * Couplings to be used in diagram weighting
+   */
+  Ptr<PhasespaceCouplings>::ptr theCouplings;
+
+  /**
+   * Interface function to setcoupling
+   */
+  string doSetCoupling(string);
+
+  /**
+   * Interface function to setcoupling
+   */
+  string doSetPhysicalCoupling(string);
+
+  /**
+   * The first id in a range of id's meant to denote fictitious
+   * 'ghost' particles to be used by the diagram generator
+   * in loop induced processes.
+   */
+  int theLoopParticleIdMin;
+
+  /**
+   * The last id in a range of id's meant to denote fictitious
+   * 'ghost' particles to be used by the diagram generator
+   * in loop induced processes.
+   */
+  int theLoopParticleIdMax;
 
   /**
    * The assignment operator is private and must never be called.

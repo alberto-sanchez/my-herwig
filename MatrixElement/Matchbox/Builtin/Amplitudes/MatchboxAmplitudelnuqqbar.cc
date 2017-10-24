@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudelnuqqbar.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudelnuqqbar.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -11,7 +11,7 @@
 // functions of the MatchboxAmplitudelnuqqbar class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxAmplitudelnuqqbar.h"
+#include "Herwig/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxAmplitudelnuqqbar.h"
 #include "ThePEG/Interface/Switch.h"
 #include "ThePEG/Interface/Parameter.h"
 
@@ -24,8 +24,8 @@ MatchboxAmplitudelnuqqbar::~MatchboxAmplitudelnuqqbar() {}
 
 void MatchboxAmplitudelnuqqbar::doinit() {
   MatchboxAmplitude::doinit();
-  MW = getParticleData(ParticleID::Wplus)->mass();
-  GW = getParticleData(ParticleID::Wplus)->width();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
+  GW = getParticleData(ParticleID::Wplus)->hardProcessWidth();
   CA = SM().Nc();
   CF = (SM().Nc()*SM().Nc()-1.)/(2.*SM().Nc());
   theCKM = standardCKM(SM())->getUnsquaredMatrix(6);
@@ -66,7 +66,7 @@ bool MatchboxAmplitudelnuqqbar::canHandle(const PDVector& proc) const {
   PDVector::iterator quark = xproc.begin();
   for ( ; quark != xproc.end(); ++quark ) 
     if ( abs((*quark)->id()) >= 1 && abs((*quark)->id()) <= 6 && abs((*quark)->id()) % 2 == 1 ) {
-      assert( (*quark)->mass() == ZERO );
+      assert( (*quark)->hardProcessMass() == ZERO );
       break;
     } 
   if ( quark == xproc.end() ) return false;
@@ -75,7 +75,7 @@ bool MatchboxAmplitudelnuqqbar::canHandle(const PDVector& proc) const {
   quark = xproc.begin();
   for ( ; quark != xproc.end(); ++quark ) 
     if ( abs((*quark)->id()) >= 1 && abs((*quark)->id()) <= 6 && abs((*quark)->id()) % 2 == 0 ) {
-      assert( (*quark)->mass() == ZERO );
+      assert( (*quark)->hardProcessMass() == ZERO );
       break;
     } 
   if ( quark == xproc.end() ) return false;
@@ -110,8 +110,8 @@ Complex MatchboxAmplitudelnuqqbar::evaluate(size_t, const vector<int>& hel, Comp
       amplitudePartonData()[1]->id() < 0:
       amplitudePartonData()[0]->id() < 0;
     pair<int,int> tmp(
-      SU2Helper::family(amplitudePartonData()[2]),
-      SU2Helper::family(amplitudePartonData()[3]));
+      SU2Helper::family(amplitudePartonData()[2])-1,
+      SU2Helper::family(amplitudePartonData()[3])-1);
     if ( amplitudePartonData()[3]->id() < 0 ) swap(tmp.first,tmp.second);
     ckmelement = theCKM[tmp.first][tmp.second];
     if ( !wPlus ) ckmelement = conj(ckmelement);
@@ -119,7 +119,7 @@ Complex MatchboxAmplitudelnuqqbar::evaluate(size_t, const vector<int>& hel, Comp
   Complex wPropergator =
           1./Complex(((amplitudeMomentum(0)+amplitudeMomentum(1)).m2()-sqr(MW))/lastSHat(),MW*GW/lastSHat());
   Complex wVertices = 
-          2.*SM().alphaEM()*Constants::pi/SM().sin2ThetaW()*ckmelement;
+          2.*SM().alphaEMMZ()*Constants::pi/SM().sin2ThetaW()*ckmelement;
   const LorentzVector<Complex>& leptonCurrent = llbarLeftCurrent(0,hel[0],1,hel[1]); 
   const LorentzVector<Complex>& quarkCurrent = qqbarLeftCurrent(2,hel[2],3,hel[3]); 
   Complex current = hel[2] == 1 ? Complex(0.,-1)*leptonCurrent.dot(quarkCurrent): 0.;
@@ -136,8 +136,8 @@ Complex MatchboxAmplitudelnuqqbar::evaluateOneLoop(size_t, const vector<int>& he
       amplitudePartonData()[1]->id() < 0:
       amplitudePartonData()[0]->id() < 0;
     pair<int,int> tmp(
-      SU2Helper::family(amplitudePartonData()[2]),
-      SU2Helper::family(amplitudePartonData()[3]));
+      SU2Helper::family(amplitudePartonData()[2])-1,
+      SU2Helper::family(amplitudePartonData()[3])-1);
     if ( amplitudePartonData()[3]->id() < 0 ) swap(tmp.first,tmp.second);
     ckmelement = theCKM[tmp.first][tmp.second];
     if ( !wPlus ) ckmelement = conj(ckmelement);
@@ -145,7 +145,7 @@ Complex MatchboxAmplitudelnuqqbar::evaluateOneLoop(size_t, const vector<int>& he
   Complex wPropergator =
           1./Complex(((amplitudeMomentum(0)+amplitudeMomentum(1)).m2()-sqr(MW))/lastSHat(),MW*GW/lastSHat());
   Complex wVertices = 
-          2.*SM().alphaEM()*Constants::pi/SM().sin2ThetaW()*ckmelement;
+          2.*SM().alphaEMMZ()*Constants::pi/SM().sin2ThetaW()*ckmelement;
   const LorentzVector<Complex>& leptonCurrent = llbarLeftCurrent(0,hel[0],1,hel[1]); 
   const LorentzVector<Complex>& quarkCurrent = qqbarLeftOneLoopCurrent(2,hel[2],3,hel[3]); 
   Complex current = hel[2] == 1 ? Complex(0.,-1)*leptonCurrent.dot(quarkCurrent): 0.;
@@ -162,7 +162,7 @@ void MatchboxAmplitudelnuqqbar::persistentInput(PersistentIStream & is, int) {
 }
 
 DescribeClass<MatchboxAmplitudelnuqqbar,MatchboxAmplitude>
-  describeHerwigMatchboxAmplitudelnuqqbar("Herwig::MatchboxAmplitudelnuqqbar", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudelnuqqbar("Herwig::MatchboxAmplitudelnuqqbar", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudelnuqqbar::Init() {
   static ClassDocumentation<MatchboxAmplitudelnuqqbar> documentation

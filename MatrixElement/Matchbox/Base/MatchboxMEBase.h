@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxMEBase.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxMEBase.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MatchboxMEBase_H
@@ -13,19 +13,19 @@
 //
 
 #include "ThePEG/MatrixElement/MEBase.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/Tree2toNGenerator.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxScaleChoice.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/ProcessData.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxReweightBase.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
-#include "Herwig++/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.fh"
-#include "Herwig++/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxXComb.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinCorrelationTensor.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/Tree2toNGenerator.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxScaleChoice.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/ProcessData.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxAmplitude.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxReweightBase.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.fh"
+#include "Herwig/MatrixElement/Matchbox/Base/MergerBase.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.fh"
+#include "Herwig/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxXComb.h"
 
 namespace Herwig {
 
@@ -64,12 +64,12 @@ public:
   /**
    * Return the factory which produced this matrix element
    */
-  Ptr<MatchboxFactory>::tcptr factory() const;
+  Ptr<MatchboxFactory>::tptr factory() const;
 
   /**
    * Set the factory which produced this matrix element
    */
-  void factory(Ptr<MatchboxFactory>::tcptr f);
+  void factory(Ptr<MatchboxFactory>::tptr f);
 
   /** @name Subprocess and diagram information. */
   //@{
@@ -126,6 +126,26 @@ public:
   colourGeometries(tcDiagPtr diag) const;
 
   /**
+   * Return true, if this amplitude is capable of consistently filling
+   * the rho matrices for the spin correllations
+   */
+  virtual bool canFillRhoMatrix() const { 
+    if ( matchboxAmplitude() )
+      return matchboxAmplitude()->canFillRhoMatrix();
+    return false;
+  }
+
+  /**
+   * construct the spin information for the interaction
+   */
+  virtual void constructVertex(tSubProPtr) {}
+
+  /**
+   * construct the spin information for the interaction
+   */
+  virtual void constructVertex(tSubProPtr sub, const ColourLines* cl);
+
+  /**
    * Return the order in \f$\alpha_S\f$ in which this matrix element
    * is given.
    */
@@ -163,6 +183,27 @@ public:
   virtual unsigned int getNLight() const;
 
   /**
+   * Return the vector that contains the PDG ids of 
+   * the light flavours, which are contained in the
+   * jet particle group.
+   */
+  virtual vector<long> getNLightJetVec() const;
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the heavy flavours, which are contained in the
+   * jet particle group.
+   */
+  virtual vector<long> getNHeavyJetVec() const;
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the light flavours, which are contained in the
+   * proton particle group.
+   */
+  virtual vector<long> getNLightProtonVec() const;
+
+  /**
    * Return true, if this matrix element is handled by a BLHA one-loop provider
    */
   virtual bool isOLPTree() const { 
@@ -194,8 +235,32 @@ public:
    */
   void olpProcess(int pType, int id) { 
     if ( theOLPProcess.empty() )
-      theOLPProcess.resize(4,0);
+      theOLPProcess.resize(5,0);
     theOLPProcess[pType] = id;
+  }
+
+  /**
+   * Return true, if this is a real emission matrix element which does
+   * not require colour correlators.
+   */
+  bool noCorrelations() const {
+    return theNoCorrelations;
+  }
+
+  /**
+   * Indicate that this is a real emission matrix element which does
+   * not require colour correlators.
+   */
+  void needsNoCorrelations() {
+    theNoCorrelations = true;
+  }
+
+  /**
+   * Indicate that this is a virtual matrix element which does
+   * require colour correlators.
+   */
+  void needsCorrelations() {
+    theNoCorrelations = false;
   }
 
   //@}
@@ -249,6 +314,21 @@ public:
   virtual bool generateKinematics(const double * r);
 
   /**
+   * Set the typed and momenta of the incoming and outgoing partons to
+   * be used in subsequent calls to me() and colourGeometries()
+   * according to the associated XComb object. If the function is
+   * overridden in a sub class the new function must call the base
+   * class one first.
+   */
+  virtual void setKinematics();
+
+  /**
+   * Clear the information previously provided by a call to
+   * setKinematics(...).
+   */
+  virtual void clearKinematics();
+
+  /**
    * The number of internal degreed of freedom used in the matrix
    * element.
    */
@@ -293,6 +373,13 @@ public:
    * Access the meMomenta.
    */
   vector<Lorentz5Momentum>& lastMEMomenta() { return meMomenta(); }
+  
+  
+  /**
+   * leg size
+   */
+  
+  int legsize() const {return int(meMomenta().size());}
 
   //@}
 
@@ -312,7 +399,25 @@ public:
   /**
    * Set scales and alphaS
    */
-  void setScale() const;
+  void setScale(Energy2 ren=ZERO,Energy2 fac=ZERO) const;
+
+  /**
+   * Indicate that this matrix element is running alphas by itself.
+   */
+  virtual bool hasRunningAlphaS() const { 
+    if ( matchboxAmplitude() )
+      return matchboxAmplitude()->hasRunningAlphaS();
+    return false;
+  }
+
+  /**
+   * Indicate that this matrix element  is running alphaew by itself.
+   */
+  virtual bool hasRunningAlphaEW() const {
+    if ( matchboxAmplitude() )
+      return matchboxAmplitude()->hasRunningAlphaEW();
+    return false;
+  }
 
   /**
    * Return the scale associated with the phase space point provided
@@ -329,6 +434,12 @@ public:
    * Get the factorization scale factor
    */
   virtual double factorizationScaleFactor() const;
+      
+      
+  /**
+    * Get the factorization scale factor
+    */
+  virtual double facFac() const{return factorizationScaleFactor();}
 
   /**
    * Return the (QCD) renormalization scale for the last generated phasespace point.
@@ -339,11 +450,22 @@ public:
    * Get the renormalization scale factor
    */
   virtual double renormalizationScaleFactor() const;
+      
+      
+  /**
+   * Get the renormalization scale factor
+   */
+  virtual double renFac() const{return renormalizationScaleFactor();}
 
   /**
    * Return the QED renormalization scale for the last generated phasespace point.
    */
   virtual Energy2 renormalizationScaleQED() const;
+
+  /**
+   * Return the shower scale for the last generated phasespace point.
+   */
+  virtual Energy2 showerScale() const;
 
   /**
    * Set veto scales on the particles at the given
@@ -380,17 +502,13 @@ public:
    * Return true, if this matrix element provides the PDF
    * weight for the first incoming parton itself.
    */
-  virtual bool havePDFWeight1() const { 
-    return diagrams().front()->partons()[0]->coloured();
-  }
+  virtual bool havePDFWeight1() const;
 
   /**
    * Return true, if this matrix element provides the PDF
    * weight for the second incoming parton itself.
    */
-  virtual bool havePDFWeight2() const { 
-    return diagrams().front()->partons()[1]->coloured();
-  }
+  virtual bool havePDFWeight2() const;
 
   /**
    * Set the PDF weight.
@@ -401,13 +519,13 @@ public:
    * Supply the PDF weight for the first incoming parton.
    */
   double pdf1(Energy2 factorizationScale = ZERO,
-	      double xEx = 1.) const;
+	      double xEx = 1., double xFactor = 1.) const;
 
   /**
    * Supply the PDF weight for the second incoming parton.
    */
   double pdf2(Energy2 factorizationScale = ZERO,
-	      double xEx = 1.) const;
+	      double xEx = 1., double xFactor = 1.) const;
 
   //@}
 
@@ -432,6 +550,13 @@ public:
   virtual double me2() const;
 
   /**
+   * Return the matrix element for the kinematical configuation
+   * previously provided by the last call to setKinematics(), suitably
+   * scaled by sHat() to give a dimension-less number.
+   */
+  virtual double largeNME2(Ptr<ColourBasis>::tptr largeNBasis) const;
+
+  /**
    * Return the symmetry factor for identical final state particles.
    */
   virtual double finalStateSymmetry() const;
@@ -447,6 +572,34 @@ public:
    * given by the last call to generateKinematics().
    */
   virtual CrossSection dSigHatDR() const;
+
+  /**
+   * Same prefactor for all dSigHat
+   **/
+  CrossSection prefactor()const;
+
+  /**
+   * Born part of the cross section
+   **/
+  CrossSection dSigHatDRB() const ;
+      
+  /**
+   * Virtual corrections of the cross section
+   **/
+  CrossSection dSigHatDRV() const ;
+      
+  /**
+   * Insertion operators of the cross section
+   **/
+  CrossSection dSigHatDRI() const ;
+      
+  /**
+   * If diffAlpha is not 1 and the matrix element has insertion operators 
+   * this routine adds the difference between the insertion operator calculated 
+   * with an alpha-Parameter to the insertion operator without alpha-parameter.
+   */ 
+  CrossSection dSigHatDRAlphaDiff(double alpha) const ;
+      
 
   //@}
 
@@ -469,6 +622,12 @@ public:
    * one-loop (QCD) corrections.
    */
   virtual bool onlyOneLoop() const;
+
+  /**
+   * Return true, if the amplitude is DRbar renormalized, otherwise
+   * MSbar is assumed.
+   */
+  virtual bool isDRbar() const;
 
   /**
    * Return true, if one loop corrections have been calculated in
@@ -578,7 +737,7 @@ public:
     /**
      * Write to file.
      */
-    void dump(const std::string& prefix, 
+    void dump(const std::string& folder, const std::string& prefix,
 	      const cPDVector& proc) const;
 
     /**
@@ -616,6 +775,12 @@ public:
    * Instruct this matrix element to include one-loop corrections
    */
   void doOneLoop() { theOneLoop = true; }
+      
+  /**
+   * Instruct this matrix element not to include one-loop corrections
+   */
+      
+  void noOneLoop() { theOneLoop = false; }
 
   /**
    * Return true, if this matrix element includes one-loop corrections
@@ -627,12 +792,26 @@ public:
    * no Born contributions
    */
   void doOneLoopNoBorn() { theOneLoop = true; theOneLoopNoBorn = true; }
+      
+  void noOneLoopNoBorn() { theOneLoop = false; theOneLoopNoBorn = false; }
 
   /**
    * Return true, if this matrix element includes one-loop corrections
    * but no Born contributions
    */
   bool oneLoopNoBorn() const { return theOneLoopNoBorn || onlyOneLoop(); }
+
+  /**
+   * Instruct this matrix element to include one-loop corrections but
+   * no actual loop contributions
+   */
+  void doOneLoopNoLoops() { theOneLoop = true; theOneLoopNoLoops = true; }
+
+  /**
+   * Return true, if this matrix element includes one-loop corrections
+   * but no actual loop contributions
+   */
+  bool oneLoopNoLoops() const { return theOneLoopNoLoops; }
 
   //@}
 
@@ -648,8 +827,9 @@ public:
    */
   vector<Ptr<SubtractionDipole>::ptr> 
   getDipoles(const vector<Ptr<SubtractionDipole>::ptr>&,
-	     const vector<Ptr<MatchboxMEBase>::ptr>&) const;
+	     const vector<Ptr<MatchboxMEBase>::ptr>&,bool slim=false) const;
 
+  
   /**
    * If this matrix element is considered a real emission matrix
    * element, but actually neglecting a subclass of the contributing
@@ -691,6 +871,14 @@ public:
    */
   virtual double spinColourCorrelatedME2(pair<int,int> emitterSpectator,
 					 const SpinCorrelationTensor& c) const;
+
+  /**
+   * Return the spin correlated matrix element squared for
+   * the vector boson indexed by the first argument using the given
+   * correlation tensor.
+   */
+  virtual double spinCorrelatedME2(pair<int,int> emitterSpectator,
+				   const SpinCorrelationTensor& c) const;
 
   //@}
 
@@ -774,6 +962,21 @@ public:
    */
   vector<Ptr<MatchboxReweightBase>::ptr>& reweights() { return theReweights; }
 
+  /**
+   * Return the theMerger.
+   */
+  const MergerBasePtr merger() const;
+    
+  /**
+   * Return the theMerger.
+   */
+  MergerBasePtr merger() ;
+      
+  /**
+   * Set the theMerger.
+   */
+  void merger(MergerBasePtr v);
+  
   //@}
 
   /** @name Methods used to setup MatchboxMEBase objects */
@@ -797,7 +1000,7 @@ public:
   /**
    * Clone the dependencies, using a given prefix.
    */
-  void cloneDependencies(const std::string& prefix = "");
+  void cloneDependencies(const std::string& prefix = "",bool slim = false );
 
   /**
    * Prepare an xcomb
@@ -883,6 +1086,12 @@ protected:
   virtual void doinit();
 
   /**
+   * Initialize this object. Called in the run phase just before
+   * a run begins.
+   */
+  virtual void doinitrun();
+
+  /**
    * Finalize this object. Called in the run phase just after a
    * run has ended. Used eg. to write out statistics.
    */
@@ -894,7 +1103,7 @@ private:
   /**
    * The factory which produced this matrix element
    */
-  Ptr<MatchboxFactory>::tcptr theFactory;
+  Ptr<MatchboxFactory>::tptr theFactory;
 
   /**
    * The phase space generator to be used.
@@ -941,6 +1150,12 @@ private:
   bool theOneLoopNoBorn;
 
   /**
+   * True, if this matrix element includes one-loop corrections
+   * but no actual loop contributions (e.g. finite collinear terms)
+   */
+  bool theOneLoopNoLoops;
+
+  /**
    * The process index, if this is an OLP handled matrix element
    */
   vector<int> theOLPProcess;
@@ -954,6 +1169,30 @@ private:
    * Histograms of epsilon pole cancellation
    */
   mutable map<cPDVector,AccuracyHistogram> epsilonPoleHistograms;
+
+  /**
+   * True, if this is a real emission matrix element which does
+   * not require colour correlators.
+   */
+  bool theNoCorrelations;
+
+  /**
+   * Flag which pdfs should be included.
+   */
+  mutable pair<bool,bool> theHavePDFs;
+
+  /**
+   * True, if already checked for which PDFs to include.
+   */
+  mutable bool checkedPDFs;
+  
+  /**
+   * The merging helper to be used. 
+   * Only the head ME has a pointer to this helper.
+   */
+
+  MergerBasePtr theMerger;
+
 
 private:
 

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEvv2ss.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// MEvv2ss.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MEvv2ss_H
@@ -22,7 +22,7 @@
 #include "ThePEG/Helicity/Vertex/AbstractSSTVertex.h"
 #include "ThePEG/Helicity/Vertex/AbstractVVSSVertex.h"
 #include "ThePEG/Helicity/Vertex/AbstractSSSVertex.h"
-#include "Herwig++/MatrixElement/ProductionMatrixElement.h"
+#include "Herwig/MatrixElement/ProductionMatrixElement.h"
 
 namespace Herwig {
 using namespace ThePEG;
@@ -175,6 +175,11 @@ private:
    * Intermediate t-channel scalar
    */
   vector<pair<AbstractVSSVertexPtr, AbstractVSSVertexPtr> > scalar2_;
+
+  /**
+   * Intermediate t-channel scalar
+   */
+  vector<pair<AbstractVVSVertexPtr, AbstractVVSVertexPtr> > scalar3_;
 
   /**
    * Intermediate s-channel vector

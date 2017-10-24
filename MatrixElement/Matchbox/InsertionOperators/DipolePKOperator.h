@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipolePKOperator.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipolePKOperator.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_DipolePKOperator_H
@@ -12,8 +12,8 @@
 // This is the declaration of the DipolePKOperator class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/InsertionOperators/MatchboxInsertionOperator.h"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
 #include "ThePEG/PDF/PDF.h"
 
 namespace Herwig {
@@ -22,7 +22,7 @@ using namespace ThePEG;
 
 /**
  * \ingroup Matchbox
- * \author Simon Platzer
+ * \author Simon Platzer, Christian Reuschle
  *
  * \brief DipolePKOperator implements the P+K
  * insertion operator.
@@ -52,6 +52,11 @@ public:
    * element this class represents virtual corrections to.
    */
   virtual void setXComb(tStdXCombPtr xc);
+  
+  /**
+   * Set parameters for new alpha parameter.
+   */
+  virtual void setAlpha (double alpha)const;
 
   /**
    * Return the number of additional random variables
@@ -59,6 +64,36 @@ public:
    * We treat all integrations on equal footing.
    */
   virtual int nDimAdditional() const { return 1; }
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<int> NLightJetVec() const;
+
+  /**
+   * Return a vector of PDG codes of the heavy flavours,
+   * which are contained in the jet particle group.
+   */
+  vector<int> NHeavyJetVec() const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the associated Born sub-process.
+   */
+  vector<int> NLightBornVec() const;
+
+  /**
+   * Return a vector of PDG codes of the heavy flavours,
+   * which are contained in the associated Born sub-process.
+   */
+  vector<int> NHeavyBornVec() const;
+
+  /**
+   * Return a vector of PDG codes of the light flavours,
+   * which are contained in the proton particle group.
+   */
+  vector<int> NLightProtonVec() const;
 
   /**
    * Evaluate the finite virtual correction for the
@@ -238,12 +273,12 @@ private:
   /**
    * K_q
    */
-  double KQuark;
+  mutable double KQuark;
 
   /**
    * K_g
    */
-  double KGluon;
+  mutable  double KGluon;
 
   /**
    * The scale to be used.

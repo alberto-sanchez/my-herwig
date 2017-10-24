@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SMTopDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// SMTopDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -19,13 +19,14 @@
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
 #include "ThePEG/PDT/DecayMode.h"
-#include "Herwig++/Decay/DecayVertex.h"
+#include "Herwig/Decay/DecayVertex.h"
 #include "ThePEG/Helicity/WaveFunction/VectorWaveFunction.h"
-#include "Herwig++/PDT/ThreeBodyAllOn1IntegralCalculator.h"
-#include "Herwig++/Shower/Base/ShowerTree.h"
-#include "Herwig++/Shower/Base/ShowerProgenitor.h"
-#include "Herwig++/Shower/Base/ShowerParticle.h"
-#include "Herwig++/Shower/Base/Branching.h"
+#include "Herwig/PDT/ThreeBodyAllOn1IntegralCalculator.h"
+#include "Herwig/Shower/RealEmissionProcess.h"
+#include "Herwig/Shower/Core/Base/ShowerProgenitor.h"
+#include "Herwig/Shower/Core/Base/ShowerParticle.h"
+#include "Herwig/Shower/Core/Base/Branching.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -201,6 +202,9 @@ void SMTopDecayer::Init() {
 double SMTopDecayer::me2(const int, const Particle & inpart,
 			 const ParticleVector & decay,
 			 MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin1Half,PDT::Spin1Half,
+					 PDT::Spin1Half,PDT::Spin1Half)));
   // spinors etc for the decaying particle
   if(meopt==Initialize) {
     // spinors and rho
@@ -212,8 +216,6 @@ double SMTopDecayer::me2(const int, const Particle & inpart,
       SpinorBarWaveFunction::calculateWaveFunctions(_inHalfBar,_rho,
 						    const_ptr_cast<tPPtr>(&inpart),
 						    incoming);
-    ME(DecayMatrixElement(PDT::Spin1Half,PDT::Spin1Half,
-			  PDT::Spin1Half,PDT::Spin1Half));
   }
   // setup spin info when needed
   if(meopt==Terminate) {
@@ -261,7 +263,7 @@ double SMTopDecayer::me2(const int, const Particle & inpart,
 				   _inHalfBar[bhel]);
 	for(afhel=0;afhel<2;++afhel){
 	  for(fhel=0;fhel<2;++fhel){
-	    ME()(thel,bhel,afhel,fhel) = 
+	    (*ME())(thel,bhel,afhel,fhel) = 
 	      _wvertex->evaluate(scale,_outHalf[afhel],
 				 _outHalfBar[fhel],inter);
 	  }
@@ -279,7 +281,7 @@ double SMTopDecayer::me2(const int, const Particle & inpart,
 	  evaluate(scale,1,Wminus,_inHalf[bbhel],_inHalfBar[tbhel]);
 	for(afhel=0;afhel<2;++afhel){
 	  for(fhel=0;fhel<2;++fhel){
-	    ME()(tbhel,bbhel,fhel,afhel) = 
+	    (*ME())(tbhel,bbhel,fhel,afhel) = 
 	      _wvertex->evaluate(scale,_outHalf[afhel],
 				 _outHalfBar[fhel],inter);
 	  }
@@ -287,7 +289,7 @@ double SMTopDecayer::me2(const int, const Particle & inpart,
       }
     }
   }
-  double output = (ME().contract(_rho)).real();
+  double output = (ME()->contract(_rho)).real();
   if(abs(decay[1]->id())<=6) output *=3.;
   return output;
 }
@@ -435,7 +437,7 @@ InvEnergy SMTopDecayer::threeBodydGammads(const int imode, const Energy2 mt2,
 						*mode(imode)->externalParticles(2));
   }
   // final spin average
-  assert(!isnan(width*GeV));
+  assert(!std::isnan(double(width*MeV)));
   return 0.5*width;
 }
 
@@ -469,15 +471,12 @@ Energy6 SMTopDecayer::dGammaIntegrand(Energy2 mffb2, Energy2 mbf2, Energy mt,
 		   + 12 * mw2 * mb2 * mfb4           +  12 * mw2 * mb4 * mfb2) /mw4 / 3.;
 }
 
-void SMTopDecayer::initializeMECorrection(ShowerTreePtr tree, double & initial,
+void SMTopDecayer::initializeMECorrection(RealEmissionProcessPtr born, double & initial,
 					  double & final) {
   // check the outgoing particles
-  map<ShowerProgenitorPtr,tShowerParticlePtr>::const_iterator cit;
-  ShowerParticlePtr part[2];
-  unsigned int ix(0);
-  for(cit=tree->outgoingLines().begin();cit!=tree->outgoingLines().end();++cit) {
-    part[ix]=cit->first->progenitor();
-    ++ix;
+  PPtr part[2];
+  for(unsigned int ix=0;ix<born->bornOutgoing().size();++ix) {
+    part[ix]= born->bornOutgoing()[ix];
   }
   // check the final-state particles and get the masses
   if(abs(part[0]->id())==ParticleID::Wplus&&abs(part[1]->id())==ParticleID::b) {
@@ -492,7 +491,7 @@ void SMTopDecayer::initializeMECorrection(ShowerTreePtr tree, double & initial,
     return;
   }
   // set the top mass
-  _mt=tree->incomingLines().begin()->first->progenitor()->mass();
+  _mt=born->bornIncoming()[0]->mass();
   // set the gluon mass
   _mg=getParticleData(ParticleID::g)->constituentMass();
   // set the radiation enhancement factors
@@ -502,46 +501,25 @@ void SMTopDecayer::initializeMECorrection(ShowerTreePtr tree, double & initial,
   _a=sqr(_ma/_mt);
   _g=sqr(_mg/_mt);
   _c=sqr(_mc/_mt);
+  double lambda = sqrt(1.+sqr(_a)+sqr(_c)-2.*_a-2.*_c-2.*_a*_c);
+  _ktb = 0.5*(3.-_a+_c+lambda);
+  _ktc = 0.5*(1.-_a+3.*_c+lambda);
   useMe();
 }
 
-void SMTopDecayer::applyHardMatrixElementCorrection(ShowerTreePtr tree) {
+RealEmissionProcessPtr SMTopDecayer::applyHardMatrixElementCorrection(RealEmissionProcessPtr born) {
   // Get b and a and put them in particle vector ba in that order...
   ParticleVector ba; 
-  map<ShowerProgenitorPtr,tShowerParticlePtr>::const_iterator cit;
-  for(cit=tree->outgoingLines().begin();cit!=tree->outgoingLines().end();++cit)
-    ba.push_back(cit->first->copy());
-  PPtr temp;
+  for(unsigned int ix=0;ix<born->bornOutgoing().size();++ix)
+    ba.push_back(born->bornOutgoing()[ix]);
   if(abs(ba[0]->id())!=5) swap(ba[0],ba[1]);
-  // Get the starting scales for the showers $\tilde{\kappa}_{b}$
-  // $\tilde{\kappa}_{c}$. These are needed in order to know the boundary
-  // of the dead zone.
-  double ktb(0.),ktc(0.);
-  map<ShowerProgenitorPtr,ShowerParticlePtr>::const_iterator cjt;
-  for(cjt = tree->incomingLines().begin();
-      cjt!= tree->incomingLines().end();++cjt) {
-    if(abs(cjt->first->progenitor()->id())==6)
-      ktb=sqr(cjt->first->progenitor()->evolutionScale()/_mt); 
-  }
-  for(cit = tree->outgoingLines().begin();
-      cit!= tree->outgoingLines().end();++cit) {
-    if(abs(cit->first->progenitor()->id())==5)
-      ktc=sqr(cit->first->progenitor()->evolutionScale()/_mt); 
-  }
-  if (ktb<=0.||ktc<=0.) {
-    throw Exception() 
-      << "SMTopDecayer::applyHardMatrixElementCorrection()"
-      << " did not set ktb,ktc" 
-      << Exception::abortnow; 
-  }
-  _ktb = ktb;
-  _ktc = ktc;
+  assert(born->bornIncoming().size()==1);
   // Now decide if we get an emission into the dead region.
   // If there is an emission newfs stores momenta for a,c,g 
   // according to NLO decay matrix element. 
-  vector<Lorentz5Momentum> newfs = applyHard(ba,ktb,ktc);
+  vector<Lorentz5Momentum> newfs = applyHard(ba,_ktb,_ktc);
   // If there was no gluon emitted return.
-  if(newfs.size()!=3) return;
+  if(newfs.size()!=3) return RealEmissionProcessPtr();
   // Sanity checks to ensure energy greater than mass etc :)
   bool check = true; 
   tcPDPtr gluondata=getParticleData(ParticleID::g);
@@ -549,8 +527,8 @@ void SMTopDecayer::applyHardMatrixElementCorrection(ShowerTreePtr tree) {
   if (newfs[1].e()<ba[1]->mass())                   check = false;
   if (newfs[2].e()<gluondata->constituentMass())    check = false;
   // Return if insane:
-  if (!check) return;
-  // Set masses in 5-vectors:
+  if (!check) return RealEmissionProcessPtr();
+  // // Set masses in 5-vectors:
   newfs[0].setMass(ba[0]->mass());
   newfs[1].setMass(ba[1]->mass());
   newfs[2].setMass(ZERO);
@@ -558,65 +536,31 @@ void SMTopDecayer::applyHardMatrixElementCorrection(ShowerTreePtr tree) {
   // To do this for decays we assume that the gluon comes from c!
   // First create new particle objects for c, a and gluon:
   PPtr newg = gluondata->produceParticle(newfs[2]);
-  PPtr newc,newa;
-  newc = ba[0]->data().produceParticle(newfs[0]);
-  newa = ba[1];
-  newa->set5Momentum(newfs[1]);
-  // set the colour lines
-  ColinePtr col;
-  if(ba[0]->id()>0) {
-    col=ba[0]->colourLine();
-    col->addColoured(newg);
-    newg->colourNeighbour(newc);
+  PPtr newc = ba[0]->data().produceParticle(newfs[0]);
+  PPtr newa = ba[1]->data().produceParticle(newfs[1]);
+  born->spectator(0);
+  born->emitted(3);
+  // decaying particle
+  born->incoming().push_back(born->bornIncoming()[0]->dataPtr()->
+			     produceParticle(born->bornIncoming()[0]->momentum()));
+  // colour flow
+  newg->incomingColour(born->incoming()[0],ba[0]->id()<0);
+  newg->colourConnect(newc                ,ba[0]->id()<0);
+  if(born->bornOutgoing()[0]->id()==newc->id()) {
+    born->outgoing().push_back(newc);
+    born->outgoing().push_back(newa);
+    born->emitter(1);
   }
-  else {     
-    col=ba[0]->antiColourLine();
-    col->addAntiColoured(newg);
-    newg->antiColourNeighbour(newc);
+  else {
+    born->outgoing().push_back(newa);
+    born->outgoing().push_back(newc);
+    born->emitter(2);
   }
-  // change the existing quark and antiquark
-  PPtr orig;
-  for(cit=tree->outgoingLines().begin();cit!=tree->outgoingLines().end();++cit) {
-    if(cit->first->progenitor()->id()==newc->id()) {
-      // remove old particles from colour line
-      if(newc->id()>0) {
-	col->removeColoured(cit->first->copy());
-	col->removeColoured(cit->first->progenitor());
-      }
-      else {
-	col->removeAntiColoured(cit->first->copy());
-	col->removeAntiColoured(cit->first->progenitor());
-      }
-      // insert new particles
-      cit->first->copy(newc);
-      ShowerParticlePtr sp(new_ptr(ShowerParticle(*newc,2,true)));
-      cit->first->progenitor(sp);
-      tree->outgoingLines()[cit->first]=sp;
-      cit->first->perturbative(false);
-      orig=cit->first->original();
-    }
-    else {
-      cit->first->copy(newa);
-      ShowerParticlePtr sp(new_ptr(ShowerParticle(*newa,2,true)));
-      map<tShowerTreePtr,pair<tShowerProgenitorPtr,
-	tShowerParticlePtr> >::const_iterator tit;
-      for(tit  = tree->treelinks().begin();
-	  tit != tree->treelinks().end();++tit) {
-	if(tit->second.first && tit->second.second==cit->first->progenitor())
-	  break;
-      }
-      cit->first->progenitor(sp);
-      if(tit!=tree->treelinks().end())
-	tree->updateLink(tit->first,make_pair(cit->first,sp));
-      tree->outgoingLines()[cit->first]=sp;
-      cit->first->perturbative(true);
-    }
-  }
-  // Add the gluon to the shower:
-  ShowerParticlePtr   sg   =new_ptr(ShowerParticle(*newg,2,true));
-  ShowerProgenitorPtr gluon=new_ptr(ShowerProgenitor(orig,newg,sg));
-  gluon->perturbative(false);
-  tree->outgoingLines().insert(make_pair(gluon,sg));
+  born->outgoing().push_back(newg);
+  // boost for the W
+  LorentzRotation trans(ba[1]->momentum().findBoostToCM());
+  trans.boost(newfs[1].boostVector());
+  born->transformation(trans);
   if(!inTheDeadRegion(_xg,_xa,_ktb,_ktc)) {
     generator()->log()
       << "SMTopDecayer::applyHardMatrixElementCorrection()\n"
@@ -624,7 +568,8 @@ void SMTopDecayer::applyHardMatrixElementCorrection(ShowerTreePtr tree) {
       << "   _xg: " << _xg << "   _xa: " << _xa 
       << "   newfs.size(): " << newfs.size() << endl;
   }
-  tree->hardMatrixElementCorrection(true);
+  born->interaction(ShowerInteraction::QCD);
+  return born;
 }
 
 vector<Lorentz5Momentum> SMTopDecayer::
@@ -753,104 +698,98 @@ bool SMTopDecayer::softMatrixElementVeto(ShowerProgenitorPtr initial,
   // check if we need to apply the full correction
   long id[2]={abs(initial->progenitor()->id()),abs(parent->id())};
   // the initial-state correction
-  if(id[0]==ParticleID::t&&id[1]==ParticleID::t)
-    {
-      Energy pt=br.kinematics->pT();
-      // check if hardest so far
-      // if not just need to remove effect of enhancement
-      bool veto(false);
-      // if not hardest so far
-      if(pt<initial->highestpT())
-	veto=!UseRandom::rndbool(1./_initialenhance);
-      // if hardest so far do calculation
-      else
-	{
-	  // values of kappa and z
-	  double z(br.kinematics->z()),kappa(sqr(br.kinematics->scale()/_mt));
-	  // parameters for the translation
-	  double w(1.-(1.-z)*(kappa-1.)),u(1.+_a-_c-(1.-z)*kappa),v(sqr(u)-4.*_a*w*z);
-	  // veto if outside phase space
-	  if(v<0.) 
-	    veto=true;
-	  // otherwise calculate the weight
-	  else
-	    {
-	      v = sqrt(v);
-	      double xa((0.5*(u+v)/w+0.5*(u-v)/z)),xg((1.-z)*kappa);
-	      double f(me(xa,xg)),
-		J(0.5*(u+v)/sqr(w)-0.5*(u-v)/sqr(z)+_a*sqr(w-z)/(v*w*z));
-	      double wgt(f*J*2./kappa/(1.+sqr(z)-2.*z/kappa)/_initialenhance);
-              // This next `if' prevents the hardest emission from the 
-              // top shower ever entering the so-called T2 region of the
-              // phase space if that region is to be populated by the hard MEC.
-              if(_useMEforT2&&xg>xgbcut(_ktb)) wgt = 0.;
-	      if(wgt>1.) {
-		generator()->log() << "Violation of maximum for initial-state "
-				   << " soft veto in "
-				   << "SMTopDecayer::softMatrixElementVeto"
-				   << "xg = " << xg << " xa = " << xa 
-				   << "weight =  " << wgt << "\n";
-		wgt=1.;
-	      }
-	      // compute veto from weight
-	      veto = !UseRandom::rndbool(wgt);
-	    }
-	  // if not vetoed reset max
-	  if(!veto) initial->highestpT(pt);
-	}
-      // if vetoing reset the scale
-      if(veto) parent->setEvolutionScale(br.kinematics->scale());
-      // return the veto
-      return veto;
-    }
-  // final-state correction
-  else if(id[0]==ParticleID::b&&id[1]==ParticleID::b)
-    {
-      Energy pt=br.kinematics->pT();
-      // check if hardest so far
-      // if not just need to remove effect of enhancement
-      bool veto(false);
-      // if not hardest so far
-      if(pt<initial->highestpT()) return !UseRandom::rndbool(1./_finalenhance);
-      // if hardest so far do calculation
+  if(id[0]==ParticleID::t&&id[1]==ParticleID::t) {
+    Energy pt=br.kinematics->pT();
+    // check if hardest so far
+    // if not just need to remove effect of enhancement
+    bool veto(false);
+    // if not hardest so far
+    if(pt<initial->highestpT())
+      veto=!UseRandom::rndbool(1./_initialenhance);
+    // if hardest so far do calculation
+    else {
       // values of kappa and z
       double z(br.kinematics->z()),kappa(sqr(br.kinematics->scale()/_mt));
-      // momentum fractions
-      double xa(1.+_a-_c-z*(1.-z)*kappa),r(0.5*(1.+_c/(1.+_a-xa))),root(sqr(xa)-4.*_a);
-      if(root<0.) {
-	  generator()->log() << "Imaginary root for final-state veto in "
+      // parameters for the translation
+      double w(1.-(1.-z)*(kappa-1.)),u(1.+_a-_c-(1.-z)*kappa),v(sqr(u)-4.*_a*w*z);
+      // veto if outside phase space
+      if(v<0.) 
+	veto=true;
+      // otherwise calculate the weight
+      else {
+	v = sqrt(v);
+	double xa((0.5*(u+v)/w+0.5*(u-v)/z)),xg((1.-z)*kappa);
+	double f(me(xa,xg)),
+	  J(0.5*(u+v)/sqr(w)-0.5*(u-v)/sqr(z)+_a*sqr(w-z)/(v*w*z));
+	double wgt(f*J*2./kappa/(1.+sqr(z)-2.*z/kappa)/_initialenhance);
+	// This next `if' prevents the hardest emission from the 
+	// top shower ever entering the so-called T2 region of the
+	// phase space if that region is to be populated by the hard MEC.
+	if(_useMEforT2&&xg>xgbcut(_ktb)) wgt = 0.;
+	if(wgt>1.) {
+	  generator()->log() << "Violation of maximum for initial-state "
+			     << " soft veto in "
 			     << "SMTopDecayer::softMatrixElementVeto"
-			     << "\nz =  " << z  << "\nkappa = " << kappa
-			     << "\nxa = " << xa 
-			     << "\nroot^2= " << root;
-	  parent->setEvolutionScale(br.kinematics->scale());
-	  return true;
-      } 
-      root=sqrt(root);
-      double xg((2.-xa)*(1.-r)-(z-r)*root);
-      // xfact (below) is supposed to equal xg/(1-z). 
-      double xfact(z*kappa/2./(z*(1.-z)*kappa+_c)*(2.-xa-root)+root);
-      // calculate the full result
-      double f(me(xa,xg));
-      // jacobian
-      double J(z*root);
-      double wgt(f*J*2.*kappa/(1.+sqr(z)-2.*_c/kappa/z)/sqr(xfact)/_finalenhance);
-      if(wgt>1.) {
-	generator()->log() << "Violation of maximum for final-state  soft veto in "
-			   << "SMTopDecayer::softMatrixElementVeto"
-			   << "xg = " << xg << " xa = " << xa 
-			   << "weight =  " << wgt << "\n";
-	wgt=1.;
+			     << "xg = " << xg << " xa = " << xa 
+			     << "weight =  " << wgt << "\n";
+	  wgt=1.;
+	}
+	// compute veto from weight
+	veto = !UseRandom::rndbool(wgt);
       }
-      // compute veto from weight
-      veto = !UseRandom::rndbool(wgt);
       // if not vetoed reset max
       if(!veto) initial->highestpT(pt);
-      // if vetoing reset the scale
-      if(veto) parent->setEvolutionScale(br.kinematics->scale());
-      // return the veto
-      return veto;
     }
+    // if vetoing reset the scale
+    if(veto) parent->vetoEmission(br.type,br.kinematics->scale());
+    // return the veto
+    return veto;
+  }
+  // final-state correction
+  else if(id[0]==ParticleID::b&&id[1]==ParticleID::b) {
+    Energy pt=br.kinematics->pT();
+    // check if hardest so far
+    // if not just need to remove effect of enhancement
+    bool veto(false);
+    // if not hardest so far
+    if(pt<initial->highestpT()) return !UseRandom::rndbool(1./_finalenhance);
+    // if hardest so far do calculation
+    // values of kappa and z
+    double z(br.kinematics->z()),kappa(sqr(br.kinematics->scale()/_mt));
+    // momentum fractions
+    double xa(1.+_a-_c-z*(1.-z)*kappa),r(0.5*(1.+_c/(1.+_a-xa))),root(sqr(xa)-4.*_a);
+    if(root<0.) {
+      generator()->log() << "Imaginary root for final-state veto in "
+			 << "SMTopDecayer::softMatrixElementVeto"
+			 << "\nz =  " << z  << "\nkappa = " << kappa
+			 << "\nxa = " << xa 
+			 << "\nroot^2= " << root;
+      parent->vetoEmission(br.type,br.kinematics->scale());
+      return true;
+    } 
+    root=sqrt(root);
+    double xg((2.-xa)*(1.-r)-(z-r)*root);
+    // xfact (below) is supposed to equal xg/(1-z). 
+    double xfact(z*kappa/2./(z*(1.-z)*kappa+_c)*(2.-xa-root)+root);
+    // calculate the full result
+    double f(me(xa,xg));
+    // jacobian
+    double J(z*root);
+    double wgt(f*J*2.*kappa/(1.+sqr(z)-2.*_c/kappa/z)/sqr(xfact)/_finalenhance);
+    if(wgt>1.) {
+      generator()->log() << "Violation of maximum for final-state  soft veto in "
+			 << "SMTopDecayer::softMatrixElementVeto"
+			 << "xg = " << xg << " xa = " << xa 
+			 << "weight =  " << wgt << "\n";
+      wgt=1.;
+    }
+    // compute veto from weight
+    veto = !UseRandom::rndbool(wgt);
+    // if vetoing reset the scale
+    if(veto) parent->vetoEmission(br.type,br.kinematics->scale());
+    // return the veto
+    return veto;
+  }
   // otherwise don't veto
   else return !UseRandom::rndbool(1./_finalenhance);
 }
@@ -920,7 +859,7 @@ double SMTopDecayer::xab(double xgb, double kt, int toggle) {
             )/2./(xgb-1.);
     }
   }
-  if(isnan(xab)) {
+  if(std::isnan(xab)) {
     double ktmktrpktmktrm = ( sqr(xgb*kt-2.*(xgb-_g))
 			      -kt*kt*(1.-1./_a)*(xgb-xgbr( 1)-_g/(1.+sqrt(_a)))
 			      *(xgb-xgbr(-1)-_g/(1.-sqrt(_a)))
@@ -933,7 +872,7 @@ double SMTopDecayer::xab(double xgb, double kt, int toggle) {
 			 ktmktrpktmktrm);
     xab = (0.5/(kt-xgb+_g))*(kt*(1.+_a-_c+_g-xgb)-lambda)
       + (0.5/(kt+xgb*(1.-kt)-_g))*(kt*(1.+_a-_c+_g-xgb)+lambda);
-    if(isnan(xab)) 
+    if(std::isnan(xab)) 
 	throw Exception() << "TopMECorrection::xab complex x_a value.\n"
 			  << "  xgb    = " << xgb    << "\n"
 			  << "  xab    = " << xab    << "\n"
@@ -1042,7 +981,7 @@ double SMTopDecayer::xginvc0(double xg , double kt) {
     output = sinh(log((u+sqrt(4.*v3+u2))/(2.*sqrt(v3)))/3.);
     output *= 2.*sqrt(v);
   }
-  if(isnan(output)||isinf(output)) {
+  if(!isfinite(output)) {
       throw Exception() << "TopMECorrection::xginvc0:\n"
 	  << "possible numerical instability detected.\n"
 	  << "\n v = " <<  v << "   u = " << u << "\n4.*v3+u2 = " << 4.*v3+u2

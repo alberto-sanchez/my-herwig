@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// RandomHelpers.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// RandomHelpers.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_RandomHelpers_H
@@ -18,7 +18,7 @@ using namespace ThePEG;
 /**
  * \ingroup Matchbox
  * \author Simon Platzer
- * \brief Phasespace generation utilities.
+ * \brief Phase space generation utilities.
  */
 namespace RandomHelpers {
 
@@ -182,7 +182,11 @@ template<class Density>
 pair<double,double> generate(const Generator<Density>& gen,
 			     double r) {
   double x = gen(r);
-  return make_pair(x,gen.normalization()/gen.value(x));
+
+  if ( gen.value(x) != 0. )
+    return make_pair(x,gen.normalization()/gen.value(x));
+  else
+    return make_pair(x,0.);
 }
 
 /**
@@ -1333,8 +1337,10 @@ public:
    * given a flat random number on the unit interval.
    */
   double operator()(double r) const { 
-    return
-      pole() + sqrtWidth()*tan(sqrtWidth()*(scale()*r+offset()));
+    double res = pole() + sqrtWidth()*tan(sqrtWidth()*(scale()*r+offset()));
+    if ( res <= lower() ) return lower()*(1+std::numeric_limits<double>::epsilon());
+    else if ( res >= upper() ) return upper()*(1-std::numeric_limits<double>::epsilon());
+    else return res;
   }
 
 };

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DecayVertex.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// DecayVertex.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -15,23 +15,20 @@
 
 #include <ThePEG/EventRecord/SpinInfo.h>
 #include "DecayVertex.h"
-#include "ThePEG/Interface/ClassDocumentation.h"
-
+#include "ThePEG/Utilities/DescribeClass.h"
 
 using namespace Herwig;
-
-
-
 using namespace ThePEG;
 
-NoPIOClassDescription<DecayVertex> DecayVertex::initDecayVertex;
-  // Definition of the static class description member.
+// Static variable needed for the type description system in ThePEG.
+DescribeNoPIOClass<DecayVertex,HelicityVertex>
+describeHerwigDecayVertex("Herwig::DecayVertex", "Herwig.so");
     
 void DecayVertex::Init() {
   
   static ClassDocumentation<DecayVertex> documentation
     ("The DecayVertex class is the implementation of a "
-     "vertex for a decay for the Herwig++ spin correlation algorithm");
+     "vertex for a decay for the Herwig spin correlation algorithm");
   
 }
 
@@ -60,7 +57,7 @@ RhoDMatrix DecayVertex::getRhoMatrix(int i,bool recursive) const {
       rhoout[ix-1] = outgoing()[ix]->DMatrix();
   }
   // calculate the spin density matrix
-  return _matrixelement.calculateRhoMatrix(i,input,rhoout);
+  return matrixElement_->calculateRhoMatrix(i,input,rhoout);
 }
 
 // method to get the D matrix for an incoming particle
@@ -77,5 +74,5 @@ RhoDMatrix DecayVertex::getDMatrix(int) const {
     Dout[ix] = hwspin->DMatrix();
   }
   // calculate the spin density matrix and return the answer
-  return _matrixelement.calculateDMatrix(Dout);
+  return matrixElement_->calculateDMatrix(Dout);
 }

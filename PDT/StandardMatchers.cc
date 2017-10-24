@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// StandardMatchers.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// StandardMatchers.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -18,15 +18,13 @@ using namespace ThePEG;
 
 namespace {
 
-void dummy() {
-
   static MatchPhoton m00;
-  static MatchTop    m01;
-  static MatchHadron m02;
-  static MatchWBoson m03;
-  static MatchZBoson m04;
-  static MatchHiggsBoson m05;
-  static MatchChargedLepton m06;
-}
+  static MatchBottom m01;
+  static MatchTop    m02;
+  static MatchHadron m03;
+  static MatchWBoson m04;
+  static MatchZBoson m05;
+  static MatchHiggsBoson m06;
+  static MatchChargedLepton m07;
 
 }

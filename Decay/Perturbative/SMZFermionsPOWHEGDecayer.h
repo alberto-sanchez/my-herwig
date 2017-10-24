@@ -6,7 +6,7 @@
 //
 
 #include "SMZDecayer.h"
-#include "Herwig++/Utilities/Maths.h"
+#include "Herwig/Utilities/Maths.h"
 
 namespace Herwig {
   
@@ -36,7 +36,7 @@ public:
   /**
    *  Apply the POWHEG style correction
    */
-  virtual HardTreePtr generateHardest(ShowerTreePtr);
+  virtual RealEmissionProcessPtr generateHardest(RealEmissionProcessPtr);
   
   /**
    *  Virtual members to be overridden by inheriting classes

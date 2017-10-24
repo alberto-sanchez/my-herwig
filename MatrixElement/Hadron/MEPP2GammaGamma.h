@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MEPP2GammaGamma.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// MEPP2GammaGamma.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_MEPP2GammaGamma_H
@@ -12,9 +12,9 @@
 // This is the declaration of the MEPP2GammaGamma class.
 //
 
-#include "Herwig++/MatrixElement/HwMEBase.h"
+#include "Herwig/MatrixElement/HwMEBase.h"
 #include "ThePEG/Helicity/Vertex/AbstractFFVVertex.h"
-#include "Herwig++/MatrixElement/ProductionMatrixElement.h"
+#include "Herwig/MatrixElement/ProductionMatrixElement.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/VectorWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorBarWaveFunction.h"
@@ -38,7 +38,7 @@ public:
   /**
    * The default constructor.
    */
-  MEPP2GammaGamma() : _maxflavour(5),_process(0) {
+  MEPP2GammaGamma() : _maxflavour(5),_process(0), scalePreFactor_(1.) {
     massOption(vector<unsigned int>(2,0));
   }
   
@@ -246,6 +246,10 @@ private:
    */
   mutable double _diagwgt[2];
 
+  /**
+   *  Scale prefactor
+   */
+  double scalePreFactor_;
 };
 
 }

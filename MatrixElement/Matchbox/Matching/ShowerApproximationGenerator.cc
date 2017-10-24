@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ShowerApproximationGenerator.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ShowerApproximationGenerator.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -16,6 +16,7 @@
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Interface/Reference.h"
 #include "ThePEG/Interface/Parameter.h"
+#include "ThePEG/Interface/Switch.h"
 #include "ThePEG/EventRecord/Particle.h"
 #include "ThePEG/Repository/UseRandom.h"
 #include "ThePEG/Repository/EventGenerator.h"
@@ -31,7 +32,8 @@
 using namespace Herwig;
 
 ShowerApproximationGenerator::ShowerApproximationGenerator() 
-  : thePresamplingPoints(10000), theMaxTry(100000) {}
+  : thePresamplingPoints(2000), theMaxTry(100000), theFreezeGrid(500000),
+    theDoCompensate(false) {}
 
 ShowerApproximationGenerator::~ShowerApproximationGenerator() {}
 
@@ -51,51 +53,63 @@ double ShowerApproximationGenerator::invertFraction(tcPDPtr pd, double x, double
   return log((1.-x+x0)/x0)/log((1.+x0)/x0);
 }
 
-bool ShowerApproximationGenerator::prepare() {
+bool ShowerApproximationGenerator::prepare(bool didproject) {
 
   tSubProPtr oldSub = lastIncomingXComb->subProcess();
 
   tcStdXCombPtr cIncomingXC = lastIncomingXComb;
 
+  bool hasFractions =
+    thePhasespace->haveX1X2() ||
+    cIncomingXC->mePartonData().size() == 3;
+
   theLastMomenta.resize(cIncomingXC->mePartonData().size());
-  theLastRandomNumbers.resize(thePhasespace->nDim(theLastMomenta.size()-2) + 2);
 
-  double x1 =
-    oldSub->incoming().first->momentum().plus() /
-    lastIncomingXComb->lastParticles().first->momentum().plus();
+  if ( !hasFractions )
+    theLastRandomNumbers.resize(thePhasespace->nDim(cIncomingXC->mePartonData()) + 2);
+  else
+    theLastRandomNumbers.resize(thePhasespace->nDim(cIncomingXC->mePartonData()));
 
-  theLastRandomNumbers[0] = invertFraction(oldSub->incoming().first->dataPtr(),x1,
-					   lastIncomingXComb->cuts()->x1Min());
+  if ( !hasFractions ) {
 
-  double x2 =
-    oldSub->incoming().second->momentum().minus() /
-    lastIncomingXComb->lastParticles().second->momentum().minus();
+    double x1 =
+      oldSub->incoming().first->momentum().plus() /
+      lastIncomingXComb->lastParticles().first->momentum().plus();
 
-  theLastRandomNumbers[1] = invertFraction(oldSub->incoming().second->dataPtr(),x2,
-					   lastIncomingXComb->cuts()->x2Min());
+    theLastRandomNumbers[0] = invertFraction(oldSub->incoming().first->dataPtr(),x1,
+					     lastIncomingXComb->cuts()->x1Min());
 
-  Boost toCMS = 
-    (oldSub->incoming().first->momentum() +
-     oldSub->incoming().second->momentum()).findBoostToCM();
+    double x2 =
+      oldSub->incoming().second->momentum().minus() /
+      lastIncomingXComb->lastParticles().second->momentum().minus();
 
-  theLastMomenta[0] = oldSub->incoming().first->momentum();
-  theLastMomenta[0].boost(toCMS);
-  theLastMomenta[1] = oldSub->incoming().second->momentum();
-  theLastMomenta[1].boost(toCMS);
+    theLastRandomNumbers[1] = invertFraction(oldSub->incoming().second->dataPtr(),x2,
+					     lastIncomingXComb->cuts()->x2Min());
 
-  ParticleVector::const_iterator out = oldSub->outgoing().begin();
-  vector<Lorentz5Momentum>::iterator p = theLastMomenta.begin() + 2;
-  for ( ; out != oldSub->outgoing().end(); ++out, ++p ) {
-    *p = (**out).momentum();
-    p->boost(toCMS);
   }
+
+  theLastMomenta = cIncomingXC->meMomenta();
 
   theLastPartons.first = 
     oldSub->incoming().first->data().produceParticle(oldSub->incoming().first->momentum());
   theLastPartons.second = 
     oldSub->incoming().second->data().produceParticle(oldSub->incoming().second->momentum());
 
-  thePhasespace->invertKinematics(theLastMomenta,&theLastRandomNumbers[2]);
+  thePhasespace->setXComb(lastIncomingXComb);
+
+  // this is a brute force fix for private ticket #241 ; only done to get fixed
+  // for the release but will need to be looked at in more detail later on by
+  // cleaning up the XCombs for these cases
+  if ( theLastMomenta.size() == 3 && didproject ) {
+    // boost them where they belong so invertKinematics is doing something sensible
+    Boost toLab = (lastIncomingXComb->lastPartons().first->momentum() + 
+		   lastIncomingXComb->lastPartons().second->momentum()).boostVector();
+    for ( int i = 0; i < 3; ++i )
+      theLastMomenta[i].boost(toLab);
+  }
+
+  thePhasespace->invertKinematics(theLastMomenta,
+				  !hasFractions ? &theLastRandomNumbers[2] : &theLastRandomNumbers[0]);
 
   theLastBornXComb->clean();
   theLastBornXComb->fill(lastIncomingXComb->lastParticles(),theLastPartons,
@@ -108,7 +122,7 @@ bool ShowerApproximationGenerator::prepare() {
 
   theLastBornME->setXComb(theLastBornXComb);
 
-  if ( !theLastBornME->generateKinematics(&theLastRandomNumbers[2]) )
+  if ( !theLastBornME->generateKinematics(!hasFractions ? &theLastRandomNumbers[2] : &theLastRandomNumbers[0]) )
     return false;
 
   CrossSection bornXS = theLastBornME->dSigHatDR();
@@ -124,23 +138,44 @@ bool ShowerApproximationGenerator::generate(const vector<double>& r) {
 
   theLastBornXComb->clean();
 
-  double x = generateFraction(theLastPartons.first->dataPtr(),r[0],
-			      lastIncomingXComb->cuts()->x1Min());
-  Energy Q = lastIncomingXComb->lastParticles().first->momentum().plus();
-  Energy mass = theLastPartons.first->dataPtr()->mass();
-  double xi = (4.*sqr(x*Q) - sqr(mass))/(4.*sqr(Q)*x);
-  Lorentz5Momentum p1(ZERO,ZERO,xi*Q);
-  p1.setMass(mass); p1.rescaleEnergy();
-  theLastPartons.first->set5Momentum(p1);
+  bool hasFractions =
+    thePhasespace->haveX1X2() ||
+    theLastBornXComb->mePartonData().size() == 3;
 
-  x = generateFraction(theLastPartons.second->dataPtr(),r[1],
-		       lastIncomingXComb->cuts()->x2Min());
-  Q = lastIncomingXComb->lastParticles().second->momentum().minus();
-  mass = theLastPartons.second->dataPtr()->mass();
-  xi = (4.*sqr(x*Q) - sqr(mass))/(4.*sqr(Q)*x);
-  Lorentz5Momentum p2(ZERO,ZERO,-xi*Q);
-  p2.setMass(mass); p2.rescaleEnergy();
-  theLastPartons.second->set5Momentum(p2);
+  if ( !hasFractions ) {
+
+    double x = generateFraction(theLastPartons.first->dataPtr(),r[0],
+				lastIncomingXComb->cuts()->x1Min());
+    Energy Q = lastIncomingXComb->lastParticles().first->momentum().plus();
+    Energy mass = theLastPartons.first->dataPtr()->mass();
+    double xi = (sqr(x*Q) - sqr(mass))/(sqr(Q)*x);
+    Lorentz5Momentum p1(ZERO,ZERO,xi*Q/2.);
+    p1.setMass(mass); p1.rescaleEnergy();
+    theLastPartons.first->set5Momentum(p1);
+
+    x = generateFraction(theLastPartons.second->dataPtr(),r[1],
+			 lastIncomingXComb->cuts()->x2Min());
+    Q = lastIncomingXComb->lastParticles().second->momentum().minus();
+    mass = theLastPartons.second->dataPtr()->mass();
+    xi = (sqr(x*Q) - sqr(mass))/(sqr(Q)*x);
+    Lorentz5Momentum p2(ZERO,ZERO,-xi*Q/2.);
+    p2.setMass(mass); p2.rescaleEnergy();
+    theLastPartons.second->set5Momentum(p2);
+
+  } else {
+
+    theLastBornME->setXComb(theLastBornXComb);
+    theLastBornXComb->lastParticles(lastIncomingXComb->lastParticles());
+    theLastBornXComb->lastP1P2(make_pair(0.0, 0.0));
+    theLastBornXComb->lastS(lastIncomingXComb->lastS());
+
+    if ( !theLastBornME->generateKinematics(&r[0]) )
+      return false;
+
+    theLastPartons.first->set5Momentum(theLastBornME->lastMEMomenta()[0]);
+    theLastPartons.second->set5Momentum(theLastBornME->lastMEMomenta()[1]);
+
+  }
 
   theLastPresamplingMomenta.resize(theLastMomenta.size());
 
@@ -149,9 +184,16 @@ bool ShowerApproximationGenerator::generate(const vector<double>& r) {
      theLastPartons.second->momentum()).findBoostToCM();
 
   theLastPresamplingMomenta[0] = theLastPartons.first->momentum();
-  theLastPresamplingMomenta[0].boost(toCMS);
+  if ( !hasFractions )
+    theLastPresamplingMomenta[0].boost(toCMS);
   theLastPresamplingMomenta[1] = theLastPartons.second->momentum();
-  theLastPresamplingMomenta[1].boost(toCMS);
+  if ( !hasFractions )
+    theLastPresamplingMomenta[1].boost(toCMS);
+
+  if ( hasFractions ) {
+    for ( size_t k = 2; k < theLastBornME->lastMEMomenta().size(); ++k )
+      theLastPresamplingMomenta[k] = theLastBornME->lastMEMomenta()[k];
+  }
 
   theLastBornXComb->fill(lastIncomingXComb->lastParticles(),theLastPartons,
 			 theLastPresamplingMomenta,r);
@@ -161,10 +203,11 @@ bool ShowerApproximationGenerator::generate(const vector<double>& r) {
 						 theLastBornXComb->mirror()) )
     return false;
 
-  theLastBornME->setXComb(theLastBornXComb);
-
-  if ( !theLastBornME->generateKinematics(&r[2]) )
-    return false;
+  if ( !hasFractions ) {
+    theLastBornME->setXComb(theLastBornXComb);
+    if ( !theLastBornME->generateKinematics(&r[2]) )
+      return false;
+  }
 
   CrossSection bornXS = theLastBornME->dSigHatDR();
 
@@ -177,17 +220,41 @@ bool ShowerApproximationGenerator::generate(const vector<double>& r) {
 
 void ShowerApproximationGenerator::restore() {
 
-  tSubProPtr oldSub = lastIncomingXComb->subProcess();
-
-  theLastPartons.first->set5Momentum(oldSub->incoming().first->momentum());
-  theLastPartons.second->set5Momentum(oldSub->incoming().second->momentum());
-
   theLastBornXComb->clean();
+
+  bool hasFractions =
+    thePhasespace->haveX1X2() ||
+    theLastBornXComb->mePartonData().size() == 3;
+
+  if ( !hasFractions ) {
+
+    tSubProPtr oldSub = lastIncomingXComb->subProcess();
+    
+    theLastPartons.first->set5Momentum(oldSub->incoming().first->momentum());
+    theLastPartons.second->set5Momentum(oldSub->incoming().second->momentum());
+
+  } else {
+
+    theLastBornME->setXComb(theLastBornXComb);
+    theLastBornXComb->lastParticles(lastIncomingXComb->lastParticles());
+    theLastBornXComb->lastP1P2(make_pair(0.0, 0.0));
+    theLastBornXComb->lastS(lastIncomingXComb->lastS());
+
+    theLastBornME->generateKinematics(&theLastRandomNumbers[0]);
+
+    theLastPartons.first->set5Momentum(theLastBornME->lastMEMomenta()[0]);
+    theLastPartons.second->set5Momentum(theLastBornME->lastMEMomenta()[1]);
+
+  }
+
   theLastBornXComb->fill(lastIncomingXComb->lastParticles(),theLastPartons,
 			 theLastMomenta,theLastRandomNumbers);
 
-  theLastBornME->setXComb(theLastBornXComb);
-  theLastBornME->generateKinematics(&theLastRandomNumbers[2]);
+  if ( !hasFractions ) {
+    theLastBornME->setXComb(theLastBornXComb);
+    theLastBornME->generateKinematics(&theLastRandomNumbers[2]);
+  }
+
   theLastBornME->dSigHatDR();
 
 }
@@ -195,14 +262,22 @@ void ShowerApproximationGenerator::restore() {
 void ShowerApproximationGenerator::
 handle(EventHandler & eh, const tPVector &,
        const Hint &) {
+  theFactory->setHardTreeEmitter(-1);
+  theFactory->setHardTreeSpectator(-1);
+  theFactory->setHardTreeSubprocess(SubProPtr());
+
 
   lastIncomingXComb = dynamic_ptr_cast<tStdXCombPtr>(eh.lastXCombPtr());
   if ( !lastIncomingXComb )
-    throw Exception() << "expecting a standard event handler"
-		      << Exception::abortnow;
+    throw Exception() << "ShowerApproximationGenerator::handle(): Expecting a standard event handler."
+		      << Exception::runerror;
 
-  if ( lastIncomingXComb->lastProjector() )
+  bool didproject = false;
+
+  if ( lastIncomingXComb->lastProjector() ) {
     lastIncomingXComb = lastIncomingXComb->lastProjector();
+    didproject = true;
+  }
 
   const StandardXComb& xc = *lastIncomingXComb;
 
@@ -224,7 +299,9 @@ handle(EventHandler & eh, const tPVector &,
       kernel->showerApproximation(theShowerApproximation);
       kernel->presamplingPoints(thePresamplingPoints);
       kernel->maxtry(theMaxTry);
+      kernel->freezeGrid(theFreezeGrid);
       kernel->showerApproximationGenerator(this);
+      kernel->doCompensate(theDoCompensate);
       if ( kernel->dipole()->bornEmitter() > 1 &&
 	   kernel->dipole()->bornSpectator() > 1 ) {
 	kernel->ptCut(ffPtCut());
@@ -250,80 +327,110 @@ handle(EventHandler & eh, const tPVector &,
   const set<Ptr<ShowerApproximationKernel>::ptr>& kernels = kernelit->second;
 
   theLastBornME = (**kernels.begin()).dipole()->underlyingBornME();
+  if ( theLastBornME->phasespace()->wantCMS() != thePhasespace->wantCMS() ) {
+    throw Exception() << "Mismatch in centre-of-mass-system requirements of hard matrix element phasespace ("
+                      << (theLastBornME->phasespace()->wantCMS()?"Yes":"No")
+                      << ") and shower approximation phasespace ("
+                      << (thePhasespace->wantCMS()?"Yes":"No") << ")"
+                      << Exception::abortnow;
+  }
   theLastBornME->phasespace(thePhasespace);
   theLastBornXComb = (**kernels.begin()).bornXComb();
 
-  if ( !prepare() )
+  if ( !prepare(didproject) )
     return;
 
   Energy winnerPt = ZERO;
   Ptr<ShowerApproximationKernel>::ptr winnerKernel;
 
-  for ( set<Ptr<ShowerApproximationKernel>::ptr>::const_iterator k =
-	  kernels.begin(); k != kernels.end(); ++k ) {
-    if ( (**k).generate() != 0. && (*k)->dipole()->lastPt() > winnerPt){
-      winnerKernel = *k;
-      winnerPt = winnerKernel->dipole()->lastPt();
+  try {
+    for ( set<Ptr<ShowerApproximationKernel>::ptr>::const_iterator k =
+	    kernels.begin(); k != kernels.end(); ++k ) {
+      if ( (**k).generate() != 0. && (*k)->dipole()->lastPt() > winnerPt){
+	winnerKernel = *k;
+	winnerPt = winnerKernel->dipole()->lastPt();
+      }
     }
+  } catch(ShowerApproximationKernel::MaxTryException&) {
+    throw Exception() << "Too many tries needed to generate the matrix element correction in '"
+		      << name() << "'" << Exception::eventerror;
   }
 
   if ( !winnerKernel || winnerPt == ZERO )
     return;
+  
+  //Hardest emission should be this one.
+
+  winnerKernel->realXComb()->lastShowerScale(sqr(winnerPt));
+  winnerKernel->bornXComb()->lastShowerScale(sqr(winnerPt));
+  lastIncomingXComb->lastShowerScale(sqr(winnerPt));
+
 
   SubProPtr oldSub = lastIncomingXComb->subProcess();
   SubProPtr newSub;
 
   try {
+    tcDiagPtr bornDiag = lastIncomingXComb->lastDiagram();
+    tcDiagPtr realDiag = 
+      winnerKernel->dipole()->realEmissionDiagram(bornDiag);
+    winnerKernel->realXComb()->externalDiagram(realDiag);
     newSub = winnerKernel->realXComb()->construct();
   } catch(Veto&) {
     return;
   }
 
-  tParticleSet firstS = oldSub->incoming().first->siblings();
-  assert(firstS.empty() || firstS.size() == 1);
-  if ( !firstS.empty() ) {
-    eh.currentStep()->removeParticle(*firstS.begin());
+  if ( !theShowerApproximation->needsTruncatedShower() ){
+    tParticleSet firstS = oldSub->incoming().first->siblings();
+    assert(firstS.empty() || firstS.size() == 1);
+    if ( !firstS.empty() ) {
+      eh.currentStep()->removeParticle(*firstS.begin());
+    }
+
+    tParticleSet secondS = oldSub->incoming().second->siblings();
+    assert(secondS.empty() || secondS.size() == 1);
+    if ( !secondS.empty() ) {
+      eh.currentStep()->removeParticle(*secondS.begin());
+    }
+
+    // prevent the colliding particles from disappearing
+    // in the initial state and appearing
+    // in the final state when we've cut off all their
+    // (physical) children; only applies to the case
+    // where we have a parton extractor not build from
+    // noPDF, so check wether the incoming particle
+    // doesnt equal the incoming parton -- this needs fixing in ThePEG
+    PPtr dummy = new_ptr(Particle(getParticleData(ParticleID::gamma)));
+    bool usedDummy = false;
+    if ( eh.currentStep()->incoming().first != oldSub->incoming().first ) {
+      eh.currentStep()->addDecayProduct(eh.currentStep()->incoming().first,dummy);
+      usedDummy = true;
+    }
+    if ( eh.currentStep()->incoming().second != oldSub->incoming().second ) {
+      eh.currentStep()->addDecayProduct(eh.currentStep()->incoming().second,dummy);
+      usedDummy = true;
+    }
+
+    eh.currentStep()->removeSubProcess(oldSub);
+    eh.currentStep()->addSubProcess(newSub);
+
+    // get rid of the dummy
+    if ( usedDummy ) {
+      eh.currentStep()->removeParticle(dummy);
+    }
+
+    eh.select(winnerKernel->realXComb());
+
+    winnerKernel->realXComb()->recreatePartonBinInstances(winnerKernel->realXComb()->lastScale());
+    winnerKernel->realXComb()->refillPartonBinInstances(&(xc.lastRandomNumbers()[0]));
+
+    winnerKernel->realXComb()->pExtractor()->constructRemnants(winnerKernel->realXComb()->partonBinInstances(),
+							       newSub, eh.currentStep());
   }
-
-  tParticleSet secondS = oldSub->incoming().second->siblings();
-  assert(secondS.empty() || secondS.size() == 1);
-  if ( !secondS.empty() ) {
-    eh.currentStep()->removeParticle(*secondS.begin());
+  else{
+    theFactory->setHardTreeSubprocess(newSub);
+    theFactory->setHardTreeEmitter(winnerKernel->dipole()->bornEmitter()); 
+    theFactory->setHardTreeSpectator(winnerKernel->dipole()->bornSpectator()); 
   }
-
-  // prevent the colliding particles from disappearing
-  // in the initial state and appearing
-  // in the final state when we've cut off all their
-  // (physical) children; only applies to the case
-  // where we have a parton extractor not build from
-  // noPDF, so check wether the incoming particle
-  // doesnt equal the incoming parton -- this needs fixing in ThePEG
-  PPtr dummy = new_ptr(Particle(getParticleData(ParticleID::gamma)));
-  bool usedDummy = false;
-  if ( eh.currentStep()->incoming().first != oldSub->incoming().first ) {
-    eh.currentStep()->addDecayProduct(eh.currentStep()->incoming().first,dummy);
-    usedDummy = true;
-  }
-  if ( eh.currentStep()->incoming().second != oldSub->incoming().second ) {
-    eh.currentStep()->addDecayProduct(eh.currentStep()->incoming().second,dummy);
-    usedDummy = true;
-  }
-
-  eh.currentStep()->removeSubProcess(oldSub);
-  eh.currentStep()->addSubProcess(newSub);
-
-  // get rid of the dummy
-  if ( usedDummy ) {
-    eh.currentStep()->removeParticle(dummy);
-  }
-
-  eh.select(winnerKernel->realXComb());
-
-  winnerKernel->realXComb()->recreatePartonBinInstances(winnerKernel->realXComb()->lastScale());
-  winnerKernel->realXComb()->refillPartonBinInstances(&(xc.lastRandomNumbers()[0]));
-
-  winnerKernel->realXComb()->pExtractor()->constructRemnants(winnerKernel->realXComb()->partonBinInstances(),
-							     newSub, eh.currentStep());
 
 }
 
@@ -342,18 +449,18 @@ IBPtr ShowerApproximationGenerator::fullclone() const {
 
 void ShowerApproximationGenerator::persistentOutput(PersistentOStream & os) const {
   os << theShowerApproximation << thePhasespace << theFactory 
-     << theKernelMap << thePresamplingPoints << theMaxTry 
+     << theKernelMap << thePresamplingPoints << theMaxTry << theFreezeGrid
      << lastIncomingXComb << theLastBornME << ounit(theLastMomenta,GeV) 
      << ounit(theLastPresamplingMomenta,GeV) << theLastRandomNumbers
-     << theLastBornXComb << theLastPartons;
+     << theLastBornXComb << theLastPartons << theDoCompensate;
 }
 
 void ShowerApproximationGenerator::persistentInput(PersistentIStream & is, int) {
   is >> theShowerApproximation >> thePhasespace >> theFactory 
-     >> theKernelMap >> thePresamplingPoints >> theMaxTry 
+     >> theKernelMap >> thePresamplingPoints >> theMaxTry >> theFreezeGrid
      >> lastIncomingXComb >> theLastBornME >> iunit(theLastMomenta,GeV) 
      >> iunit(theLastPresamplingMomenta,GeV) >> theLastRandomNumbers
-     >> theLastBornXComb >> theLastPartons;
+     >> theLastBornXComb >> theLastPartons >> theDoCompensate;
 }
 
 
@@ -363,7 +470,7 @@ void ShowerApproximationGenerator::persistentInput(PersistentIStream & is, int) 
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<ShowerApproximationGenerator,StepHandler>
-  describeHerwigShowerApproximationGenerator("Herwig::ShowerApproximationGenerator", "HwMatchbox.so");
+  describeHerwigShowerApproximationGenerator("Herwig::ShowerApproximationGenerator", "Herwig.so");
 
 void ShowerApproximationGenerator::Init() {
 
@@ -371,28 +478,28 @@ void ShowerApproximationGenerator::Init() {
     ("ShowerApproximationGenerator generates emissions according to a "
      "shower approximation entering a NLO matching.");
 
-
   static Reference<ShowerApproximationGenerator,ShowerApproximation> interfaceShowerApproximation
     ("ShowerApproximation",
      "Set the shower approximation to sample.",
      &ShowerApproximationGenerator::theShowerApproximation, false, false, true, false, false);
-
+  interfaceShowerApproximation.rank(-1);
 
   static Reference<ShowerApproximationGenerator,MatchboxPhasespace> interfacePhasespace
     ("Phasespace",
      "The phase space generator to use.",
      &ShowerApproximationGenerator::thePhasespace, false, false, true, false, false);
-
+  interfacePhasespace.rank(-1);
 
   static Reference<ShowerApproximationGenerator,MatchboxFactory> interfaceFactory
     ("Factory",
      "The factory object to use.",
      &ShowerApproximationGenerator::theFactory, false, false, true, false, false);
+  interfaceFactory.rank(-1);
 
   static Parameter<ShowerApproximationGenerator,unsigned long> interfacePresamplingPoints
     ("PresamplingPoints",
      "Set the number of presampling points.",
-     &ShowerApproximationGenerator::thePresamplingPoints, 10000, 1, 0,
+     &ShowerApproximationGenerator::thePresamplingPoints, 2000, 1, 0,
      false, false, Interface::lowerlim);
 
   static Parameter<ShowerApproximationGenerator,unsigned long> interfaceMaxTry
@@ -400,6 +507,27 @@ void ShowerApproximationGenerator::Init() {
      "Set the number of maximum attempts.",
      &ShowerApproximationGenerator::theMaxTry, 100000, 1, 0,
      false, false, Interface::lowerlim);
+
+  static Parameter<ShowerApproximationGenerator,unsigned long> interfaceFreezeGrid
+    ("FreezeGrid",
+     "",
+     &ShowerApproximationGenerator::theFreezeGrid, 500000, 1, 0,
+     false, false, Interface::lowerlim);
+
+  static Switch<ShowerApproximationGenerator,bool> interfaceDoCompensate
+    ("DoCompensate",
+     "",
+     &ShowerApproximationGenerator::theDoCompensate, false, false, false);
+  static SwitchOption interfaceDoCompensateYes
+    (interfaceDoCompensate,
+     "Yes",
+     "",
+     true);
+  static SwitchOption interfaceDoCompensateNo
+    (interfaceDoCompensate,
+     "No",
+     "",
+     false);
 
 }
 

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudellbarqqbar.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudellbarqqbar.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_MatchboxAmplitudellbarqqbar_H
@@ -12,8 +12,8 @@
 // This is the declaration of the MatchboxAmplitudellbarqqbar class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxZGammaAmplitude.h"
-#include "Herwig++/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxCurrents.h"
+#include "Herwig/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxZGammaAmplitude.h"
+#include "Herwig/MatrixElement/Matchbox/Builtin/Amplitudes/MatchboxCurrents.h"
 
 namespace Herwig {
 
@@ -87,10 +87,9 @@ public:
   virtual Complex evaluateOneLoop(size_t, const vector<int>&);
 
   /**
-   * Return true, if one loop corrections are given in the conventions
-   * of BDK.
+   * Return true if one loop corrections are given in the conventions of everything expanded - this is currently the only convention available in DipoleMIOperator.cc
    */
-  virtual bool isBDK() const { return true; }
+  virtual bool isExpanded() const { return true; }
 
   /**
    * Return the value of the dimensional regularization

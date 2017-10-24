@@ -1,53 +1,3 @@
-# check for gcc bug http://gcc.gnu.org/bugzilla/show_bug.cgi?id=34130
-AC_DEFUN([HERWIG_CHECK_ABS_BUG],
-[
-AC_REQUIRE([HERWIG_COMPILERFLAGS])
-if test "$GCC" = "yes"; then
-AC_MSG_CHECKING([for gcc abs bug])
-AC_RUN_IFELSE([
-	AC_LANG_PROGRAM(
-		[[ int foo (int i) { return -2 * __builtin_abs(i - 2); } ]],
-		[[ if ( foo(1) != -2 || foo(3) != -2 ) return 1; ]]
-	)],
-	[ AC_MSG_RESULT([not found. Compiler is ok.]) ],
-	[
-	AC_MSG_RESULT([found. Builtin abs() is buggy.])
-	AC_MSG_CHECKING([if -fno-builtin-abs works])
-	oldcxxflags=$CXXFLAGS
-	CXXFLAGS="$CXXFLAGS -fno-builtin-abs"
-	AC_RUN_IFELSE([
-		AC_LANG_PROGRAM(
-			[[
-			#include <cstdlib>
-			int foo (int i) { return -2 * std::abs(i - 2); }
-			]],
-			[[
-			if (foo(1) != -2 || foo(3) != -2) return 1; 
-			]]
-		)],
-		[
-		AC_MSG_RESULT([yes. Setting -fno-builtin-abs.])
-		AM_CXXFLAGS="$AM_CXXFLAGS -fno-builtin-abs"
-		AM_CFLAGS="$AM_CFLAGS -fno-builtin-abs"
-		],
-		[
-		AC_MSG_RESULT([no. Setting -fno-builtin.])
-		AC_MSG_WARN([
-*****************************************************************************
-For this version of gcc, -fno-builtin-abs alone did not work to avoid the 
-gcc abs() bug. Instead, all gcc builtin functions are now disabled.
-Update gcc if possible.
-*****************************************************************************])
-		AM_CXXFLAGS="$AM_CXXFLAGS -fno-builtin"
-		AM_CFLAGS="$AM_CFLAGS -fno-builtin"
-		]
-	)
-	CXXFLAGS=$oldcxxflags
-	]
-)
-fi
-])
-
 dnl ##### THEPEG #####
 AC_DEFUN([HERWIG_CHECK_THEPEG],
 [
@@ -61,22 +11,42 @@ AC_ARG_WITH(thepeg,
 AC_MSG_RESULT([$with_thepeg])
 
 if test "x$with_thepeg" = "xno"; then
-	AC_MSG_ERROR([Cannot build Herwig++ without ThePEG. Please set --with-thepeg.])
+	AC_MSG_ERROR([Cannot build Herwig without ThePEG. Please set --with-thepeg.])
+fi
+
+THEPEGLDFLAGS="-L${with_thepeg}/lib/ThePEG"
+
+THEPEGHASLHAPDF="no"
+if test -e ${with_thepeg}/lib/ThePEG/ThePEGLHAPDF.so ; then
+   THEPEGHASLHAPDF="yes"
+fi
+if test "${host_cpu}" == "x86_64" -a -e ${with_thepeg}/lib64/ThePEG/libThePEG.so ; then
+  THEPEGLDFLAGS="-L${with_thepeg}/lib64/ThePEG"
+  if test -e ${with_thepeg}/lib64/ThePEG/ThePEGLHAPDF.so ; then
+      THEPEGHASLHAPDF="yes"
+  fi
+fi
+
+if test "x$THEPEGHASLHAPDF" == "xno" ; then
+   AC_MSG_ERROR([Herwig requires ThePEG to be build with lhapdf.])
+fi
+
+THEPEGHASFASTJET="no"
+if test -e ${with_thepeg}/lib/ThePEG/FastJetFinder.so ; then
+   THEPEGHASFASTJET="yes"
+fi
+if test "${host_cpu}" == "x86_64" -a -e ${with_thepeg}/lib64/ThePEG/libThePEG.so ; then
+  THEPEGLDFLAGS="-L${with_thepeg}/lib64/ThePEG"
+  if test -e ${with_thepeg}/lib64/ThePEG/FastJetFinder.so ; then
+      THEPEGHASFASTJET="yes"
+  fi
+fi
+
+if test "x$THEPEGHASFASTJET" == "xno" ; then
+   AC_MSG_ERROR([Herwig requires ThePEG to be build with FastJet.])
 fi
 
 THEPEGPATH="${with_thepeg}"
-
-THEPEGLIBPATH="${with_thepeg}/lib/ThePEG"
-if test "${host_cpu}" == "x86_64" -a -e ${with_thepeg}/lib64/ThePEG/libThePEG.so ; then
-  THEPEGLIBPATH="${with_thepeg}/lib64/ThePEG"
-fi
-
-THEPEGHASLHAPDF="no"
-if test -e $THEPEGLIBPATH/ThePEGLHAPDF.so ; then
-   THEPEGHASLHAPDF="yes"
-fi
-
-THEPEGLDFLAGS="-L$THEPEGLIBPATH"
 
 oldldflags="$LDFLAGS"
 oldlibs="$LIBS"
@@ -88,8 +58,8 @@ AC_CHECK_LIB([ThePEG],[debugThePEG],[],
 AC_SUBST([THEPEGLIB],[-lThePEG])
 AC_SUBST(THEPEGLDFLAGS)
 AC_SUBST(THEPEGPATH)
-AC_SUBST(THEPEGLIBPATH)
 AC_SUBST(THEPEGHASLHAPDF)
+AC_SUBST(THEPEGHASFASTJET)
 
 LIBS="$oldlibs"
 LDFLAGS="$oldldflags"
@@ -102,7 +72,7 @@ AC_ARG_WITH([thepeg-headers],
 AC_MSG_RESULT([$with_thepeg_headers])
 
 if test "x$with_thepeg_headers" = "xno"; then
-	AC_MSG_ERROR([Cannot build Herwig++ without ThePEG headers. Please set --with-thepeg-headers.])
+	AC_MSG_ERROR([Cannot build Herwig without ThePEG headers. Please set --with-thepeg-headers.])
 fi
 
 THEPEGINCLUDE="-I$with_thepeg_headers"
@@ -117,15 +87,49 @@ AC_SUBST(THEPEGINCLUDE)
 
 AC_MSG_CHECKING([for HepMCAnalysis.so in ThePEG])
 
-if test -e "$THEPEGLIBPATH/HepMCAnalysis.so" ; then
-     	CREATE_HEPMC="create"
-	AC_MSG_RESULT([found])
+THEPEGHASHEPMC="no"
+if test -e ${with_thepeg}/lib/ThePEG/HepMCAnalysis.so ; then
+   THEPEGHASHEPMC="yes"
+fi
+if test "${host_cpu}" == "x86_64" -a -e ${with_thepeg}/lib64/ThePEG/libThePEG.so ; then
+  THEPEGLDFLAGS="-L${with_thepeg}/lib64/ThePEG"
+  if test -e ${with_thepeg}/lib64/ThePEG/HepMCAnalysis.so ; then
+    THEPEGHASHEPMC="yes"
+  fi
+fi
+
+if test "x$THEPEGHASHEPMC" == "xno" ; then
+  CREATE_HEPMC="# create"
+  AC_MSG_RESULT([not found])
 else
-	CREATE_HEPMC="# create"
-	AC_MSG_RESULT([not found])
+  CREATE_HEPMC="create"
+  AC_MSG_RESULT([found])
 fi
 
 AC_SUBST([CREATE_HEPMC])
+
+AC_MSG_CHECKING([for RivetAnalysis.so in ThePEG])
+
+THEPEGHASRIVET="no"
+if test -e ${with_thepeg}/lib/ThePEG/RivetAnalysis.so ; then
+   THEPEGHASRIVET="yes"
+fi
+if test "${host_cpu}" == "x86_64" -a -e ${with_thepeg}/lib64/ThePEG/libThePEG.so ; then
+  THEPEGLDFLAGS="-L${with_thepeg}/lib64/ThePEG"
+  if test -e ${with_thepeg}/lib64/ThePEG/RivetAnalysis.so ; then
+    THEPEGHASRIVET="yes"
+  fi
+fi
+
+if test "x$THEPEGHASRIVET" == "xno" ; then
+  CREATE_RIVET="# create"
+  AC_MSG_RESULT([not found])
+else
+  CREATE_RIVET="create"
+  AC_MSG_RESULT([found])
+fi
+
+AC_SUBST([CREATE_RIVET])
 ])
 
 dnl ##### LOOPTOOLS #####
@@ -166,34 +170,550 @@ AC_SUBST([AM_FFLAGS],[$AM_FCFLAGS])
 AC_SUBST([FLIBS],[$FCLIBS])
 ])
 
-dnl ##### PDF PATH #####
-AC_DEFUN([HERWIG_PDF_PATH],
+dnl ##### VBFNLO #####
+AC_DEFUN([HERWIG_CHECK_VBFNLO],
 [
-AC_MSG_CHECKING([which Herwig++ PDF data to use])
-AC_ARG_WITH(pdf,
-        AC_HELP_STRING([--with-pdf=DIR],[installation path of Herwig++PDF data tarball]),
-        [],
-        [with_pdf=${prefix}]
-        )
-HERWIG_PDF_PREFIX=${with_pdf}/share/Herwig++PDF
+AC_MSG_CHECKING([for VBFNLO])
 
-if test -f "${HERWIG_PDF_PREFIX}/mrst/2008/mrstMCal.dat"; then
-	AC_MSG_RESULT([$with_pdf])
-	localPDFneeded=false
+AC_ARG_WITH([vbfnlo],
+    AS_HELP_STRING([--with-vbfnlo=DIR], [Installation path of VBFNLO]),
+    [],
+    [with_vbfnlo=no]
+
+)
+
+AC_MSG_RESULT([$with_vbfnlo])
+
+AS_IF([test "x$with_vbfnlo" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_vbfnlo}/lib/VBFNLO/libVBFNLO.so,
+      [have_vbfnlo=lib], [have_vbfnlo=no])],
+      [have_vbfnlo=no])
+
+AS_IF([test "x$with_vbfnlo" != "xno" -a "x$have_vbfnlo" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_vbfnlo}/lib64/VBFNLO/libVBFNLO.so,
+      [have_vbfnlo=lib64], [have_vbfnlo=no])])
+
+AS_IF([test "x$with_vbfnlo" != "xno" -a "x$have_vbfnlo" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_vbfnlo}/lib/VBFNLO/libVBFNLO.dylib,
+      [have_vbfnlo=lib], [have_vbfnlo=no])])
+
+AS_IF([test "x$with_vbfnlo" != "xno" -a "x$have_vbfnlo" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_vbfnlo}/lib64/VBFNLO/libVBFNLO.dylib,
+      [have_vbfnlo=lib64], [have_vbfnlo=no])])
+
+AS_IF([test "x$have_vbfnlo" = "xlib"],
+      [VBFNLOLIBS=${with_vbfnlo}/lib/VBFNLO
+      AC_SUBST(VBFNLOLIBS)
+      ])
+
+AS_IF([test "x$have_vbfnlo" = "xlib64"],
+      [VBFNLOLIBS=${with_vbfnlo}/lib64/VBFNLO
+      AC_SUBST(VBFNLOLIBS)
+      ])
+
+AS_IF([test "x$with_vbfnlo" != "xno" -a "x$have_vbfnlo" = "xno"],
+      [AC_MSG_ERROR([vbfnlo requested but not found])])
+
+AM_CONDITIONAL(HAVE_VBFNLO,[test "x$have_vbfnlo" = "xlib" -o "x$have_vbfnlo" = "xlib64"])
+
+if test "x$have_vbfnlo" = "xlib" -o "x$have_vbfnlo" = "xlib64" ; then
+        AC_REQUIRE([AC_PROG_SED])
+        VBFNLOINCLUDE=${with_vbfnlo}/include
+	AC_SUBST(VBFNLOINCLUDE)
+        VBFNLOLIB=$(echo ${with_vbfnlo}/${have_vbfnlo}/VBFNLO | $SED -e 's%/\+%/%g')
+        AC_SUBST(VBFNLOLIB)
+     	LOAD_VBFNLO="library"
+     	CREATE_VBFNLO="create"
+     	INSERT_VBFNLO="insert"
+     	SET_VBFNLO="set"
+     	DO_VBFNLO="do"
+     	MKDIR_VBFNLO="mkdir"
 else
-	AC_MSG_RESULT([Using built-in PDF data set. For other data sets, set --with-pdf.])
-	HERWIG_PDF_PREFIX=PDF
-	localPDFneeded=true
+     	LOAD_VBFNLO="# library"
+	CREATE_VBFNLO="# create"
+     	INSERT_VBFNLO="# insert"
+     	SET_VBFNLO="# set"
+     	DO_VBFNLO="# do"
+     	MKDIR_VBFNLO="# mkdir"
 fi
-HERWIG_PDF_DEFAULT=${HERWIG_PDF_PREFIX}/mrst/2008/mrstMCal.dat
-HERWIG_PDF_NLO=${HERWIG_PDF_PREFIX}/mrst/2002/mrst2002nlo.dat
-HERWIG_PDF_POMERON=${HERWIG_PDF_PREFIX}/diffraction/
 
-AM_CONDITIONAL(WANT_LOCAL_PDF,[test "x$localPDFneeded" = "xtrue"])
-AC_SUBST(HERWIG_PDF_DEFAULT)
-AC_SUBST(HERWIG_PDF_NLO)
-AC_SUBST(HERWIG_PDF_POMERON)
+AC_SUBST([LOAD_VBFNLO])
+AC_SUBST([CREATE_VBFNLO])
+AC_SUBST([INSERT_VBFNLO])
+AC_SUBST([SET_VBFNLO])
+AC_SUBST([DO_VBFNLO])
+AC_SUBST([MKDIR_VBFNLO])
+
 ])
+
+dnl ##### njet #####
+AC_DEFUN([HERWIG_CHECK_NJET],
+[
+AC_MSG_CHECKING([for njet])
+
+AC_ARG_WITH([njet],
+    AS_HELP_STRING([--with-njet=DIR], [Installation path of njet]),
+    [],
+    [with_njet=no]
+
+)
+
+AC_MSG_RESULT([$with_njet])
+
+AS_IF([test "x$with_njet" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_njet}/lib/libnjet2.so,
+      [have_njet=lib], [have_njet=no])],
+      [have_njet=no])
+
+AS_IF([test "x$with_njet" != "xno" -a "x$have_njet" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_njet}/lib64/libnjet2.so,
+      [have_njet=lib64], [have_njet=no])])
+
+AS_IF([test "x$with_njet" != "xno" -a "x$have_njet" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_njet}/lib/libnjet2.dylib,
+      [have_njet=lib], [have_njet=no])])
+
+AS_IF([test "x$have_njet" = "xlib"],
+      [NJETLIBPATH=${with_njet}/lib
+      AC_SUBST(NJETLIBPATH)
+      NJETINCLUDEPATH=${with_njet}/include
+      AC_SUBST(NJETINCLUDEPATH)
+      NJETPREFIX=${with_njet}
+      AC_SUBST(NJETPREFIX)
+      ])
+
+AS_IF([test "x$have_njet" = "xlib64"],
+      [NJETLIBPATH=${with_njet}/lib64
+      AC_SUBST(NJETLIBPATH)
+      NJETINCLUDEPATH=${with_njet}/include
+      AC_SUBST(NJETINCLUDEPATH)
+      NJETPREFIX=${with_njet}
+      AC_SUBST(NJETPREFIX)
+      ])
+
+AS_IF([test "x$with_njet" != "xno"  -a "x$have_njet" = "xno"],
+      [AC_MSG_ERROR([njet requested but not found])])
+
+AM_CONDITIONAL(HAVE_NJET,[test "x$have_njet" = "xlib" -o "x$have_njet" = "xlib64"])
+
+if test "x$have_njet" = "xlib" -o "x$have_njet" = "xlib64" ; then
+     	LOAD_NJET="library"
+     	CREATE_NJET="create"
+     	INSERT_NJET="insert"
+     	DO_NJET="do"
+else
+     	LOAD_NJET="# library"
+	CREATE_NJET="# create"
+     	INSERT_NJET="# insert"
+     	DO_NJET="# do"
+fi
+
+AC_SUBST([LOAD_NJET])
+AC_SUBST([CREATE_NJET])
+AC_SUBST([INSERT_NJET])
+AC_SUBST([DO_NJET])
+
+])
+
+
+
+dnl ##### gosam #####
+AC_DEFUN([HERWIG_CHECK_GOSAM],
+[
+AC_MSG_CHECKING([for GoSam])
+
+AC_ARG_WITH([gosam],
+    AS_HELP_STRING([--with-gosam=DIR], [Installation path of GoSam]),
+    [],
+    [with_gosam=no]
+)
+
+AC_MSG_RESULT([$with_gosam])
+
+AS_IF([test "x$with_gosam" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_gosam}/bin/gosam.py,
+      [have_gosam=lib], [have_gosam=no])],
+      [have_gosam=no])
+
+AS_IF([test "x$have_gosam" = "xlib"],
+      [GOSAMPREFIX=${with_gosam}
+      AC_SUBST(GOSAMPREFIX)
+      ])
+
+AS_IF([test "x$with_gosam" != "xno"  -a "x$have_gosam" = "xno"],
+      [AC_MSG_ERROR([GoSam requested but not found])])
+
+AS_IF([test "x$with_gosam" != "xno"],
+[AC_MSG_CHECKING([for GoSam version >= 2.0.4])
+tmp_gosamversion=[$(${with_gosam}/bin/gosam.py --version | grep 'GoSam.*rev' | cut -d' ' -f2)]
+AX_COMPARE_VERSION([${tmp_gosamversion}],[lt],[2.0.4],
+                   [AC_MSG_RESULT([no])
+                    AC_MSG_ERROR([Herwig requires GoSam 2.0.4 or later, found ${tmp_gosamversion}])],
+                   [AC_MSG_RESULT([yes])])])
+
+AM_CONDITIONAL(HAVE_GOSAM,[test "x$have_gosam" = "xlib" ])
+
+if test "x$have_gosam" = "xlib"  ; then
+     	LOAD_GOSAM="library"
+     	CREATE_GOSAM="create"
+     	INSERT_GOSAM="insert"
+     	DO_GOSAM="do"
+else
+     	LOAD_GOSAM="# library"
+	CREATE_GOSAM="# create"
+     	INSERT_GOSAM="# insert"
+     	DO_GOSAM="# do"
+fi
+
+AC_SUBST([LOAD_GOSAM])
+AC_SUBST([CREATE_GOSAM])
+AC_SUBST([INSERT_GOSAM])
+AC_SUBST([DO_GOSAM])
+
+
+])
+
+
+dnl ##### gosam-contrib #####
+AC_DEFUN([HERWIG_CHECK_GOSAM_CONTRIB],
+[
+AC_MSG_CHECKING([for gosam-contrib])
+
+AC_ARG_WITH([gosam-contrib],
+    AS_HELP_STRING([--with-gosam-contrib=DIR], [Installation path of gosam-contrib]),
+    [],
+    [with_gosam_contrib=no]
+)
+
+AC_MSG_RESULT([$with_gosam_contrib])
+
+AS_IF([test "x$with_gosam_contrib" = "xno" -a "x$with_gosam" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_gosam}/lib/libsamurai.so,
+      [with_gosam_contrib=${with_gosam}], [])
+])
+
+AS_IF([test "x$with_gosam_contrib" = "xno" -a "x$with_gosam" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_gosam}/lib64/libsamurai.so,
+      [with_gosam_contrib=${with_gosam}], [])
+])
+
+AS_IF([test "x$with_gosam_contrib" = "xno" -a "x$with_gosam" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_gosam}/lib/libsamurai.dylib,
+      [with_gosam_contrib=${with_gosam}], [])
+])
+
+AS_IF([test "x$with_gosam_contrib" = "xno" -a "x$with_gosam" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_gosam}/lib64/libsamurai.dylib,
+      [with_gosam_contrib=${with_gosam}], [])
+])
+
+AS_IF([test "x$with_gosam_contrib" = "xno" -a "x$with_gosam" != "xno"],
+      [AC_MSG_ERROR([GoSam requested without requesting GoSam-Contrib])])
+
+AS_IF([test "x$with_gosam_contrib" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_gosam_contrib}/lib/libsamurai.so,
+      [have_gosam_contrib=lib], [have_gosam_contrib=no])],
+      [have_gosam_contrib=no])
+
+AS_IF([test "x$with_gosam_contrib" != "xno" -a "x$have_gosam_contrib" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_gosam_contrib}/lib64/libsamurai.so,
+      [have_gosam_contrib=lib64], [have_gosam_contrib=no])])
+
+AS_IF([test "x$with_gosam_contrib" != "xno" -a "x$have_gosam_contrib" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_gosam_contrib}/lib/libsamurai.dylib,
+      [have_gosam_contrib=lib], [have_gosam_contrib=no])])
+
+AS_IF([test "x$with_gosam_contrib" != "xno" -a "x$have_gosam_contrib" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_gosam_contrib}/lib64/libsamurai.dylib,
+      [have_gosam_contrib=lib64], [have_gosam_contrib=no])])
+
+
+
+
+
+
+
+AS_IF([test "x$have_gosam_contrib" != "xno"],
+      [GOSAMCONTRIBPREFIX=${with_gosam_contrib}
+      AC_SUBST(GOSAMCONTRIBPREFIX)
+      ])
+
+AS_IF([test "x$have_gosam_contrib" = "xlib"],
+      [GOSAMCONTRIBLIBS=${with_gosam_contrib}/lib
+      AC_SUBST(GOSAMCONTRIBLIBS)
+      ])
+
+AS_IF([test "x$have_gosam_contrib" = "xlib64"],
+      [GOSAMCONTRIBLIBS=${with_gosam_contrib}/lib64
+      AC_SUBST(GOSAMCONTRIBLIBS)
+      ])
+
+AS_IF([test "x$with_gosam_contrib" != "xno"  -a "x$have_gosam_contrib" = "xno"],
+      [AC_MSG_ERROR([GoSam-Contrib requested but not found])])
+
+AM_CONDITIONAL(HAVE_GOSAM_CONTRIB,[test "x$have_gosam_contrib" = "xlib" -o "x$have_gosam_contrib" = "xlib64"])
+
+if test "x$have_gosam_contrib" = "xlib" -o "x$have_gosam_contrib" = "xlib64" ; then
+        LOAD_GOSAM_CONTRIB="library"
+        CREATE_GOSAM_CONTRIB="create"
+        INSERT_GOSAM_CONTRIB="insert"
+else
+        LOAD_GOSAM_CONTRIB="# library"
+        CREATE_GOSAM_CONTRIB="# create"
+        INSERT_GOSAM_CONTRIB="# insert"
+fi
+
+AC_SUBST([LOAD_GOSAM_CONTRIB])
+AC_SUBST([CREATE_GOSAM_CONTRIB])
+AC_SUBST([INSERT_GOSAM_CONTRIB])
+
+
+])
+
+
+dnl ##### OpenLoops #####
+AC_DEFUN([HERWIG_CHECK_OPENLOOPS],
+[
+AC_MSG_CHECKING([for OpenLoops])
+
+AC_ARG_WITH([openloops],
+    AS_HELP_STRING([--with-openloops=DIR], [Installation path of OpenLoops]),
+    [],
+    [with_openloops=no]
+
+)
+
+AC_MSG_RESULT([$with_openloops])
+
+AS_IF([test "x$with_openloops" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_openloops}/lib/libopenloops.so,
+      [have_openloops=lib], [have_openloops=no])],
+      [have_openloops=no])
+
+AS_IF([test "x$with_openloops" != "xno" -a "x$have_openloops" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_openloops}/lib/libopenloops.dylib,
+      [have_openloops=lib], [have_openloops=no])])
+
+AS_IF([test "x$with_openloops" != "xno" -a "x$have_openloops" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_openloops}/lib64/libopenloops.so,
+      [have_openloops=lib64], [have_openloops=no])])
+
+
+AS_IF([test "x$with_openloops" != "xno" -a "x$have_openloops" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_openloops}/lib64/libopenloops.dylib,
+      [have_openloops=lib64], [have_openloops=no])])
+
+
+
+
+
+AS_IF([test "x$have_openloops" = "xlib"],
+      [OPENLOOPSLIBS=${with_openloops}/lib
+      AC_SUBST(OPENLOOPSLIBS)
+      ])
+
+AS_IF([test "x$have_openloops" = "xlib64"],
+      [OPENLOOPSLIBS=${with_openloops}/lib64
+      AC_SUBST(OPENLOOPSLIBS)
+      ])
+
+AS_IF([test "x$with_openloops" != "xno" -a "x$have_openloops" = "xno"],
+      [AC_MSG_ERROR([OpenLoops requested but not found])])
+
+AM_CONDITIONAL(HAVE_OPENLOOPS,[test "x$have_openloops" = "xlib" -o "x$have_openloops" = "xlib64"])
+
+if test "x$have_openloops" = "xlib" -o "x$have_openloops" = "xlib64" ; then
+        OPENLOOPSPREFIX=${with_openloops}
+     	LOAD_OPENLOOPS="library"
+     	CREATE_OPENLOOPS="create"
+     	INSERT_OPENLOOPS="insert"
+     	SET_OPENLOOPS="set"
+     	DO_OPENLOOPS="do"
+     	MKDIR_OPENLOOPS="mkdir"
+else
+     	LOAD_OPENLOOPS="# library"
+	CREATE_OPENLOOPS="# create"
+     	INSERT_OPENLOOPS="# insert"
+     	SET_OPENLOOPS="# set"
+     	DO_OPENLOOPS="# do"
+     	MKDIR_OPENLOOPS="# mkdir"
+fi
+
+AC_SUBST([OPENLOOPSPREFIX])
+AC_SUBST([LOAD_OPENLOOPS])
+AC_SUBST([CREATE_OPENLOOPS])
+AC_SUBST([INSERT_OPENLOOPS])
+AC_SUBST([SET_OPENLOOPS])
+AC_SUBST([DO_OPENLOOPS])
+AC_SUBST([MKDIR_OPENLOOPS])
+
+])
+
+#########################################
+
+dnl ##### madgraph #####
+AC_DEFUN([HERWIG_CHECK_MADGRAPH],
+[
+AC_MSG_CHECKING([for MadGraph])
+
+AC_ARG_WITH([madgraph],
+    AS_HELP_STRING([--with-madgraph=DIR], [Installation path of MadGraph]),
+    [],
+    [with_madgraph=no]
+)
+
+AC_MSG_RESULT([$with_madgraph])
+
+AS_IF([test "x$with_madgraph" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_madgraph}/bin/mg5_aMC,
+      [have_madgraph=yes], [have_madgraph=no])],
+      [have_madgraph=no])
+
+AS_IF([test "x$have_madgraph" = "xyes"],
+      [MADGRAPHPREFIX=${with_madgraph}
+      AC_SUBST(MADGRAPHPREFIX)
+      ])
+
+AS_IF([test "x$with_madgraph" != "xno"  -a "x$have_madgraph" = "xno"],
+      [AC_MSG_ERROR([MadGraph requested but not found])])
+
+AM_CONDITIONAL(HAVE_MADGRAPH,[test "x$have_madgraph" = "xyes" ])
+
+if test "x$have_madgraph" = "xyes"  ; then
+     	LOAD_MADGRAPH="library"
+     	CREATE_MADGRAPH="create"
+     	INSERT_MADGRAPH="insert"
+     	SET_MADGRAPH="set"
+     	DO_MADGRAPH="do"
+else
+     	LOAD_MADGRAPH="# library"
+	CREATE_MADGRAPH="# create"
+     	INSERT_MADGRAPH="# insert"
+     	SET_MADGRAPH="# set"
+     	DO_MADGRAPH="# do"
+fi
+
+AC_SUBST([LOAD_MADGRAPH])
+AC_SUBST([CREATE_MADGRAPH])
+AC_SUBST([INSERT_MADGRAPH])
+AC_SUBST([SET_MADGRAPH])
+AC_SUBST([DO_MADGRAPH])
+
+])
+
+
+dnl ##### EvtGen #####
+AC_DEFUN([HERWIG_CHECK_EVTGEN],
+[
+AC_MSG_CHECKING([for evtgen])
+
+AC_ARG_WITH([evtgen],
+    AS_HELP_STRING([--with-evtgen=DIR], [Installation path of EvtGen]),
+    [],
+    [with_evtgen=no]
+)
+
+AC_MSG_RESULT([$with_evtgen])
+
+AS_IF([test "x$with_evtgen" != "xno"],
+      [AC_CHECK_FILES(
+      ${with_evtgen}/lib/libEvtGenExternal.so,
+      [have_evtgen=lib], [have_evtgen=no])],
+      [have_evtgen=no])
+
+AS_IF([test "x$with_evtgen" != "xno" -a "x$have_evtgen" = "xno"],
+      [AC_CHECK_FILES(
+      ${with_evtgen}/lib64/libEvtGenExternal.so,
+      [have_evtgen=lib64], [have_evtgen=no])])
+
+AS_IF([test "x$with_evtgen" != "xno" -a "x$have_evtgen" = "xno" ],
+      [AC_CHECK_FILES(
+      ${with_evtgen}/lib/libEvtGenExternal.dylib,
+      [have_evtgen=lib], [have_evtgen=no])])
+
+AS_IF([test "x$have_evtgen" = "xlib" -o "x$have_evtgen" = "xlib64" ],
+      [EVTGENPREFIX=${with_evtgen}
+      AC_SUBST(EVTGENPREFIX)
+      ])
+
+AS_IF([test "x$with_evtgen" != "xno"  -a "x$have_evtgen" = "xno"],
+      [AC_MSG_ERROR([EvtGen requested but not found])])
+
+AC_SUBST([EVTGENINCLUDE],[-I$EVTGENPREFIX/include])
+
+AM_CONDITIONAL(HAVE_EVTGEN,[test "x$have_evtgen" = "xlib" ])
+
+if test "x$have_evtgen" = "xlib"  ; then
+     	LOAD_EVTGEN_DECAYS="read EvtGenBDecays.in"
+     	LOAD_EVTGEN_DECAYER="read EvtGenDecayer.in"
+	EVTGENLIBS="-L$with_evtgen/lib -lEvtGen -lEvtGenExternal"
+elif test "x$have_evtgen" = "xlib64"  ; then
+      LOAD_EVTGEN_DECAYS="read EvtGenBDecays.in"
+      LOAD_EVTGEN_DECAYER="read EvtGenDecayer.in"
+  EVTGENLIBS="-L$with_evtgen/lib64 -lEvtGen -lEvtGenExternal"
+else
+     	LOAD_EVTGEN_DECAYS="read HerwigBDecays.in"
+     	LOAD_EVTGEN_DECAYER="#read EvtGenDecayer.in"
+	EVTGENLIBS=""
+fi
+
+AC_SUBST([LOAD_EVTGEN_DECAYS])
+AC_SUBST([LOAD_EVTGEN_DECAYER])
+AC_SUBST([EVTGENLIBS])
+
+
+])
+
+AC_DEFUN([HERWIG_CHECK_PYTHIA],
+[
+dnl check if a directory is specified for Pythia
+AC_ARG_WITH(pythia,
+            [AC_HELP_STRING([--with-pythia=dir], 
+                            [Assume the given directory for Pythia])])
+
+dnl search for the pythia-config script
+if test "$with_pythia" = ""; then
+   AC_PATH_PROG(pythiaconfig, pythia8-config, no)
+else
+   AC_PATH_PROG(pythiaconfig, pythia8-config, no, ${with_pythia}/bin)
+fi
+
+if test "${pythiaconfig}" = "no"; then
+   AC_MSG_CHECKING(Pythia)
+   AC_MSG_RESULT(no);
+#   $2
+else
+
+   PYTHIA8DATA=`${pythiaconfig} --datadir`/xmldoc
+
+fi
+
+AC_SUBST(PYTHIA8DATA)
+
+])
+
+dnl CHECK PYTHIA END
 
 dnl ###### GSL ######
 AC_DEFUN([HERWIG_CHECK_GSL],
@@ -222,16 +742,19 @@ if test "x$with_gsl" = "xsystem"; then
 			]
 		     )
 	GSLLIBS="$LIBS"
+	GSLPATH="$with_gsl"
 	LIBS=$oldlibs
 else
 	if test "`uname -m`" = "x86_64" -a -e "$with_gsl/lib64/libgsl.a" -a -d "$with_gsl/include/gsl"; then
 		AC_MSG_RESULT([found in $with_gsl])
 		GSLLIBS="-L$with_gsl/lib64 -R$with_gsl/lib64 -lgslcblas -lgsl"
 		GSLINCLUDE="-I$with_gsl/include"
+		GSLPATH="$with_gsl"
 	elif test -e "$with_gsl/lib/libgsl.a" -a -d "$with_gsl/include/gsl"; then
 		AC_MSG_RESULT([found in $with_gsl])
 		GSLLIBS="-L$with_gsl/lib -R$with_gsl/lib -lgslcblas -lgsl"
 		GSLINCLUDE="-I$with_gsl/include"
+		GSLPATH="$with_gsl"
 	else
 		AC_MSG_RESULT([not found])
 		AC_MSG_ERROR([Can't find $with_gsl/lib/libgsl.a or the headers in $with_gsl/include])
@@ -240,14 +763,7 @@ fi
 
 AC_SUBST(GSLINCLUDE)
 AC_SUBST(GSLLIBS)
-])
-
-AC_DEFUN([HERWIG_VERSIONSTRING],
-[
-if test -d $srcdir/.svn; then
-	AC_CHECK_PROG(have_svnversion,[svnversion],[yes],[no])
-fi
-AM_CONDITIONAL(USE_SVNVERSION,[test "x$have_svnversion" = "xyes"])
+AC_SUBST(GSLPATH)
 ])
 
 dnl ##### COMPILERFLAGS #####
@@ -256,6 +772,7 @@ AC_DEFUN([HERWIG_COMPILERFLAGS],
 AC_REQUIRE([HERWIG_CHECK_GSL])
 AC_REQUIRE([HERWIG_CHECK_THEPEG])
 AC_REQUIRE([BOOST_REQUIRE])
+AC_REQUIRE([AX_COMPILER_VENDOR])
 
 AM_CPPFLAGS="-I\$(top_builddir)/include $THEPEGINCLUDE \$(GSLINCLUDE) \$(BOOST_CPPFLAGS)"
 
@@ -275,7 +792,7 @@ fi
 
 dnl -Wfloat-equal -fvisibility-inlines-hidden -Wctor-dtor-privacy -Weffc++
 if test -n "$GCC"; then
-	warnflags="-ansi -pedantic -Wall -Wextra -Wno-overloaded-virtual"
+	warnflags="-pedantic -Wall -Wextra -Wno-overloaded-virtual"
 
 	if test "x$enable_debug" = "xslow"; then
 		debugflags="$debugflags -fno-inline"
@@ -285,16 +802,31 @@ fi
 
 dnl do an actual capability check on ld instead of this workaround
 case "${host}" in
-  *-darwin*) 
+  *-darwin*)
      ;;
   *)
      AM_LDFLAGS="-Wl,--enable-new-dtags"
      ;;
 esac
 
+case "${ax_cv_cxx_compiler_vendor}" in
+     gnu)
+        AM_CXXFLAGS="-pedantic -Wall -W"
+        ;;
+     clang)
+        AM_CXXFLAGS="-pedantic -Wall -Wno-overloaded-virtual -Wno-unused-function -Wno-unused-parameter"
+dnl  -Wno-unneeded-internal-declaration
+        ;;
+     intel)
+        AM_CXXFLAGS="-strict-ansi -Wall -wd13000,1418,981,444,383,1599,1572,2259,980"
+        ;;
+esac
+
+
+
 AC_SUBST(AM_CPPFLAGS)
 AC_SUBST(AM_CFLAGS,  ["$warnflags $debugflags"])
-AC_SUBST(AM_CXXFLAGS,["$warnflags $debugflags"])
+AC_SUBST(AM_CXXFLAGS,["$AM_CXXFLAGS $warnflags $debugflags"])
 AC_SUBST(AM_FCFLAGS,  ["$debugflags"])
 AC_SUBST(AM_LDFLAGS)
 ])
@@ -319,39 +851,6 @@ AC_SUBST(LOAD_BSM)
 AM_CONDITIONAL(WANT_BSM,[test "$enable_models" = "yes"])
 ])
 
-
-AC_DEFUN([HERWIG_ENABLE_DIPOLE],
-[
-AC_MSG_CHECKING([if dipole shower should be built])
-
-AC_ARG_ENABLE(dipole,
-        AC_HELP_STRING([--disable-dipole],[Turn off compilation of dipole shower.]),
-        [],
-        [enable_dipole=yes]
-        )
-AC_MSG_RESULT([$enable_dipole])
-
-LOAD_DIPOLE=""
-LOAD_DIPOLE_ALPHAS=""
-LOAD_MATCHBOX=""
-if test "$enable_dipole" = "yes"; then
-WARNLHAPDF=""
-if test "x$THEPEGHASLHAPDF" = "xno" ; then
-   AC_MSG_WARN([Dipole shower defaults require LHAPDF])
-   WARNLHAPDF=" * warning: LHAPDF disabled * "
-fi
-LOAD_DIPOLE="library HwDipoleShower.so"
-LOAD_DIPOLE_ALPHAS="library HwDipoleShowerAlphaS.so"
-LOAD_MATCHBOX="library HwMatchbox.so"
-fi
-AC_SUBST(LOAD_DIPOLE)
-AC_SUBST(LOAD_DIPOLE_ALPHAS)
-AC_SUBST(LOAD_MATCHBOX)
-
-AM_CONDITIONAL(WANT_DIPOLE,[test "$enable_dipole" = "yes"])
-])
-
-
 AC_DEFUN([HERWIG_OVERVIEW],
 [
 FCSTRING=`$FC --version | head -1`
@@ -371,7 +870,6 @@ cat << _HW_EOF_ > config.herwig
 *** Prefix:		$prefix
 ***
 *** BSM models:		$enable_models
-*** Dipole shower:	$enable_dipole $WARNLHAPDF
 *** UFO converter:	${python_was_found}
 ***
 *** Herwig debug mode:	$enable_debug
@@ -379,6 +877,14 @@ cat << _HW_EOF_ > config.herwig
 *** ThePEG:		$with_thepeg
 *** ThePEG headers:	$with_thepeg_headers
 ***
+*** GoSam:		$with_gosam
+*** GoSam-Contrib:      $with_gosam_contrib
+*** MadGraph:        	$with_madgraph
+*** njet:		$with_njet
+*** OpenLoops:		$with_openloops
+*** VBFNLO:		$with_vbfnlo
+***
+*** EvtGen:		$with_evtgen
 *** GSL:		$with_gsl
 *** boost:              ${BOOST_CPPFLAGS:-system}
 *** Fastjet:		${fjconfig}

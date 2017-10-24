@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FFLightInvertedTildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// FFLightInvertedTildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -95,12 +95,18 @@ Energy FFLightInvertedTildeKinematics::lastPt() const {
 
 }
 
+double FFLightInvertedTildeKinematics::lastZ() const {
+  return subtractionParameters()[1];
+}
+
 Energy FFLightInvertedTildeKinematics::ptMax() const {
   return lastScale()/2.;
 }
 
-pair<double,double> FFLightInvertedTildeKinematics::zBounds(Energy pt) const {
-  double s = sqrt(1.-sqr(pt/ptMax()));
+pair<double,double> FFLightInvertedTildeKinematics::zBounds(Energy pt, Energy hardPt) const {
+  hardPt = hardPt == ZERO ? ptMax() : min(hardPt,ptMax());
+  if(pt>hardPt) return make_pair(0.5,0.5);
+  double s = sqrt(1.-sqr(pt/hardPt));
   return make_pair(0.5*(1.-s),0.5*(1.+s));
 }
 
@@ -128,4 +134,4 @@ void FFLightInvertedTildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<FFLightInvertedTildeKinematics,InvertedTildeKinematics>
-describeHerwigFFLightInvertedTildeKinematics("Herwig::FFLightInvertedTildeKinematics", "HwMatchbox.so");
+describeHerwigFFLightInvertedTildeKinematics("Herwig::FFLightInvertedTildeKinematics", "Herwig.so");

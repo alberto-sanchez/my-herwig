@@ -1,4 +1,231 @@
-Herwig++ News				(emacs -*- outline -*- format)
+Herwig News							 -*- outline -*-
+================================================================================
+
+* Herwig 7.1.1 release: 2017-07-14
+
+** Snippets are now all installed
+
+** Fixed broken ufo2herwig output and LHC-MB.in
+
+** UFO improvements
+*** More robust SLHA file handling
+*** option of creating diagonal mixing matrices, needed for ATLAS simplfied models
+*** Improved warnings about resetting standard model particles
+*** Fixed certain cases where the wrong lorentz structure was picked in VVS vertices
+
+** Improved error message for unhandled beam particles
+
+** Fix for Dipole Shower chain selection
+
+** Fixed crash in double diffractive delta resonances
+
+
+
+* Herwig 7.1.0 release: 2017-05-19
+
+** Major new release
+   For a more detailed overview and further references please see the 
+   release note arXiv:1705.06919
+
+** NLO multijet merging with the dipole shower
+
+** A new soft model
+
+** An interface to EvtGen
+
+** Improved calculation of mass effects in the dipole shower
+
+** Top decays in the dipole shower, and NLO corrections to the decay
+
+** An implementation of the KrkNLO method for simple processes
+
+** Major restructuring and cleanup of default input files
+
+** C++11 is now mandatory and heavily used in the code
+
+** Many smaller bugfixes and improvements
+
+
+
+* Herwig 7.0.4 release: 2016-10-24
+
+** API
+   The high level API is now properly available as a library, providing an
+   alternative to the Herwig main program.
+
+** Dipole shower
+   Added nloops() function to the AlphaS classes to return the number of loops
+   in the running coupling
+
+** Matchbox
+   Improved error handling and clearer messages
+
+** BSM models
+   Initialize W mass correctly from SLHA file. Improved reading in of decay
+   modes if they already exist.
+
+** Sampling
+   Introduced option to reduce reference weight in AlmostUnweighted mode by
+   Kappa factor. Useful for processes where full unweighting is infeasible.
+
+** Qtilde shower
+   Better control of scale in splitting functions using the
+   SplittingFunction:ScaleChoice interface.
+
+** Tests
+   New NLO fixed-order input files for testing Matchbox in Tests/ExternNLO.
+
+** Input files
+   Set diagonal CKM options consistently. Added TauTauHVertex and MuMuHVertex
+   to MatchboxDefaults.
+
+* Herwig 7.0.3 release: 2016-07-21
+
+** subprocess generation filters
+   A number of filters has been implemented to speed up process and diagram
+   generation for the case of Standard Model like processes; this is
+   particularly helpful for processes involving a large number of electroweak
+   combinatorics. See the documentation for more details.
+
+** fix to directory hierarchy
+   A bug in the Herwig-scratch directory hierarchy when integrating with
+   different seeds has been fixed.
+
+** fix for relocating MadGraph generated amplitudes
+   The directory and symbolic link structure for MadGraph-built amplitudes has
+   been changed to allow for relocation of a run directory to a different file
+   system hierarchy.
+
+** z* variable added to LeptonsJetsAnalysis
+   The builtin LeptonsJetsAnalysis has been extented to include the normalized
+   relative rapidity z*
+
+** detuning parameter for shower reweighting
+   An efficiency tweak when using the shower reweighting facilities has been
+   introduced for the veto algorithms in both the QTilde and the Dipole
+   shower. See the documentation for more details.
+
+** BaryonThreeQuarkModelFormFactor
+   A scaling bug in the form factor series expansion was fixed.
+
+* Herwig 7.0.2 release: 2016-04-29
+
+** Event reweighting
+   New option of calculating the weights for the effect of varying the scale
+   used in both the default and dipole showers. The method is described in
+   arXiv:1605.08256
+
+** mergegrids mode
+   A main mode for the Herwig executable has been added which merges the
+   integration grids from parallel runs.
+
+** NLO Diphoton production
+   The NLO matrix elements in the POWHEG approach for diphoton production as
+   described in JHEP 1202 (2012) 130, arXiv:1106.3939 have been included as
+   MEPP2GammaGammaPowheg.
+
+** BSM Hard process constructor
+   A missing Feynman diagram with a t-channel vector boson has been added to
+   the matrix element for vv2ss
+
+** BSM Decay Modes calculation
+   The behaviour of the option to disable decay modes in BSM Models has been
+   changed so that the partial width for the ignored modes is now calculated
+   and included in the total width, but the branching ratio is set to
+   zero. This is more physical than the previous option where the mode was
+   t otally ignored and hence not included in the calculation of the width.
+
+** Mass Generation
+   The behaviour of the GenericMassGenerator has been changed so that modes
+   which have been disabled are only included in the calculation of the total
+   width and not in the partial width used in the numerator of the weight used
+   to select the off-shell mass.
+
+** Boost detection
+   Boost could not detect the compiler version for gcc-5.3 and gcc-6.1
+
+* Herwig 7.0.1 release: 2016-01-17
+
+** Version number written to log file
+   The Herwig version number is now included in addition to ThePEG's version.
+
+** Tau lifetimes
+   A bug with lifetimes for hard process Taus is fixed. Thanks to ATLAS
+   for the report!
+
+** Shower FSR retries
+   Rare events could take a long time due to an extremely large number
+   of FSR retries. These are now capped at a configurable number.
+
+** Dipole shower
+   Reweighting for non-radiating events; fixes for shower profile
+   handling; option to downgrade large-Q expansion for alphaS
+
+** Matchbox builtins
+   Added massive currents for q-qbar
+
+** ShowerAlphaQCD
+   can now use user-defined thresholds
+
+** Input snippets
+   W/Z/H on-shell now split into three files; 4-flavour scheme added
+
+** UFO converter
+   The converter now has experimental support for writing out param
+   cards of its current settings.
+
+** LEPJetAnalysis loading fixed
+
+** Contrib
+   HJets++ has moved to a stand-alone project, FxFx has been added
+
+* Herwig 7.0.0 (Herwig++ 3.0.0) release: 2015-12-04
+
+** Major new release
+   A major new release of the Monte Carlo event generator Herwig++ (version
+   3.0) is now available. This release marks the end of distinguishing
+   Herwig++ and HERWIG development and therefore constitutes the first major
+   release of version 7 of the Herwig event generator family. The new version
+   features a number of significant improvements to the event simulation,
+   including: built-in NLO hard process calculation for all Standard Model
+   processes, with matching to both angular ordered and dipole shower modules
+   via variants of both subtractive (MC@NLO-type) and multiplicative
+   (Powheg-type) algorithms; QED radiation and spin correlations in the
+   angular ordered shower; a consistent treatment of perturbative
+   uncertainties within the hard process and parton showering, as well as a
+   vastly improved documentation. This version includes (for a more detailed
+   overview and further references please see the release note
+   arXiv:1512.01178):
+
+** A long list of improvements and fixes for the Matchbox module
+*** includes MC@NLO and Powheg matching to both showers with truncated showering
+
+** A long list of improvements and fixes for both of the shower modules
+*** includes improvements of numerics issues relevant to 100 TeV pp collisions
+
+** NLO event simulation and Matchbox development
+*** Interfaces to a number of external libraries
+*** A new workflow for event generation
+*** Electroweak corrections to VV production
+
+** Parton shower development
+*** QED radiation in the angular ordered shower
+*** Spin correlations in the angular ordered shower
+*** New scale choices in gluon branchings
+
+** Improvements to event generation workflow
+*** Re-organized and streamlined input files for the new NLO development
+*** A unified treatment of shower and matching uncertainties
+*** New integrator modules featuring parallel integration
+
+** New default tunes for both shower modules
+
+** New contrib modules
+*** Electroweak Higgs plus jets production
+*** FxFx merging support
+*** Higgs boson pair production
+
+
 
 * Herwig++-2.7.1 release: 2014-07-07
 

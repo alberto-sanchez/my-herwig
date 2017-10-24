@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SMHiggsWWDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// SMHiggsWWDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -17,10 +17,11 @@
 #include "ThePEG/Interface/Switch.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
-#include "Herwig++/Models/StandardModel/StandardModel.h"
+#include "Herwig/Models/StandardModel/StandardModel.h"
 #include "ThePEG/PDT/EnumParticles.h"
 #include "ThePEG/PDT/DecayMode.h"
 #include "ThePEG/PDT/ParticleData.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 typedef Selector<tDMPtr> DecaySelector;
@@ -56,7 +57,7 @@ void SMHiggsWWDecayer::doinit() {
   tcHwSMPtr hwsm=dynamic_ptr_cast<tcHwSMPtr>(standardModel());
   if(!hwsm) 
     throw InitException() << "SMHiggsWWDecayer needs the StandardModel class"
-			  << " to be either the Herwig++ one or a class inheriting"
+			  << " to be either the Herwig one or a class inheriting"
 			  << " from it";
   _theFFWVertex = hwsm->vertexFFW();
   _theFFZVertex = hwsm->vertexFFZ();
@@ -192,14 +193,15 @@ ParticleVector SMHiggsWWDecayer::decay(const Particle & parent,
 double SMHiggsWWDecayer::me2(const int, const Particle & inpart,
 			     const ParticleVector & decay,
 			     MEOption meopt) const {
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin0,PDT::Spin1Half,PDT::Spin1Half,
+					 PDT::Spin1Half,PDT::Spin1Half)));
   // check if Z or W decay
   bool Z0=decay[0]->id()==-decay[1]->id();
   if(meopt==Initialize) {
     ScalarWaveFunction::
       calculateWaveFunctions(_rho,const_ptr_cast<tPPtr>(&inpart),incoming);
     _swave = ScalarWaveFunction(inpart.momentum(),inpart.dataPtr(),incoming);
-    ME(DecayMatrixElement(PDT::Spin0,PDT::Spin1Half,PDT::Spin1Half,
-			  PDT::Spin1Half,PDT::Spin1Half));
   }
   if(meopt==Terminate) {
     ScalarWaveFunction::constructSpinInfo(const_ptr_cast<tPPtr>(&inpart),
@@ -263,14 +265,14 @@ double SMHiggsWWDecayer::me2(const int, const Particle & inpart,
     for(ohel2=0;ohel2<2;++ohel2) {
       for(ohel3=0;ohel3<2;++ohel3) {
 	for(ohel4=0;ohel4<2;++ohel4) {
-	  ME()(0,ohel1,ohel2,ohel3,ohel4)=
+	  (*ME())(0,ohel1,ohel2,ohel3,ohel4)=
 	    _theHVVVertex->evaluate(scale0,curr1[ohel1][ohel2],
 				    curr2[ohel3][ohel4],_swave);
 	}
       }
     }
   }
-  double output=(ME().contract(_rho)).real()*scale0*UnitRemoval::InvE2;
+  double output=(ME()->contract(_rho)).real()*scale0*UnitRemoval::InvE2;
   // set up the colour flows
   if(decay[0]->coloured()) {
     output*=3.;

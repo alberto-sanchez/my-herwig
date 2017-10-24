@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// IFLightInvertedTildeKinematics.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// IFLightInvertedTildeKinematics.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -60,8 +60,8 @@ bool IFLightInvertedTildeKinematics::doMap(const double * r) {
     return false;
   }
 
-  double x = 0.5*(1./ratio)*(1.-z+ratio)*sqrt(rho);
-  double u = 0.5*(1./(1.-z))*(1.-z+ratio)*sqrt(rho);
+  double x = 0.5*(1./ratio)*(1.-z+ratio)*(1.-sqrt(rho));
+  double u = 0.5*(1./(1.-z))*(1.-z+ratio)*(1.-sqrt(rho));
 
   if ( x < emitterX() || x > 1. || 
        u < 0. || u > 1. ) {
@@ -69,6 +69,7 @@ bool IFLightInvertedTildeKinematics::doMap(const double * r) {
     return false;
   }
 
+  // This jacobian is (1/x^2)*dx*du
   mapping *= (1.-x)/((1.-z)*(z*(1.-z)+sqr(x-z)));
   jacobian(mapping*(sqr(lastScale())/sHat())/(16.*sqr(Constants::pi)));
 
@@ -108,13 +109,19 @@ Energy IFLightInvertedTildeKinematics::ptMax() const {
   return sqrt((1.-x)/x)*lastScale()/2.;
 }
 
-pair<double,double> IFLightInvertedTildeKinematics::zBounds(Energy pt) const {
-  double s = sqrt(1.-sqr(pt/ptMax()));
+pair<double,double> IFLightInvertedTildeKinematics::zBounds(Energy pt, Energy hardPt) const {
+  hardPt = hardPt == ZERO ? ptMax() : min(hardPt,ptMax());
+  if(pt>hardPt) return make_pair(0.5,0.5);
+  double s = sqrt(1.-sqr(pt/hardPt));
   double x = emitterX();
   return make_pair(0.5*(1.+x-(1.-x)*s),0.5*(1.+x+(1.-x)*s));
 }
 
-
+double IFLightInvertedTildeKinematics::lastZ() const {
+  double x = subtractionParameters()[0];
+  double u = subtractionParameters()[1];
+  return 1. - (1.-x)*(1.-u);
+}
 
 // If needed, insert default implementations of virtual function defined
 // in the InterfacedBase class here (using ThePEG-interfaced-impl in Emacs).
@@ -140,4 +147,4 @@ void IFLightInvertedTildeKinematics::Init() {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<IFLightInvertedTildeKinematics,InvertedTildeKinematics>
-describeHerwigIFLightInvertedTildeKinematics("Herwig::IFLightInvertedTildeKinematics", "HwMatchbox.so");
+describeHerwigIFLightInvertedTildeKinematics("Herwig::IFLightInvertedTildeKinematics", "Herwig.so");

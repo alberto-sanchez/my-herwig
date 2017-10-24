@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxXComb.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxXComb.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_LastMatchboxXCombInfo_H
@@ -12,7 +12,7 @@
 // This is the declaration of the MatchboxXComb class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Utility/MatchboxXCombData.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/MatchboxXCombData.h"
 
 namespace Herwig {
 
@@ -73,6 +73,11 @@ public:
   double crossingSign() const { return lastMatchboxXComb()->crossingSign(); }
 
   /**
+   * The last renormalization scale
+   */
+  Energy2 lastRenormalizationScale() const { return lastMatchboxXComb()->lastRenormalizationScale(); }
+
+  /**
    * The amplitude parton data.
    */
   const cPDVector& amplitudePartonData() const { return lastMatchboxXComb()->amplitudePartonData(); }
@@ -120,6 +125,17 @@ public:
    * The last tree-level matrix element squared
    */
   double lastTreeME2() const { return lastMatchboxXComb()->lastTreeME2(); }
+
+  /**
+   * True, if the tree-level matrix element squared needs to be
+   * calculated.
+   */
+  bool calculateLargeNME2() const { return lastMatchboxXComb()->calculateLargeNME2(); }
+
+  /**
+   * The last tree-level matrix element squared
+   */
+  double lastLargeNME2() const { return lastMatchboxXComb()->lastLargeNME2(); }
 
   /**
    * True, if the one-loop/tree-level interference.
@@ -178,9 +194,41 @@ public:
   Complex lastColourSpinCorrelator(const pair<int,int>& ij) const { return lastMatchboxXComb()->lastColourSpinCorrelator(ij); }
 
   /**
+   * True, if the indexed spin correlated matrix element needs to be
+   * calculated.
+   */
+  bool calculateSpinCorrelator(const pair<int,int>& ij) const { return lastMatchboxXComb()->calculateSpinCorrelator(ij); }
+
+  /**
+   * The spin correlated matrix element.
+   */
+  Complex lastSpinCorrelator(const pair<int,int>& ij) const { return lastMatchboxXComb()->lastSpinCorrelator(ij); }
+
+  /**
    * Return the number of light flavours to be considered for this process.
    */
   unsigned int nLight() const { return lastMatchboxXComb()->nLight(); }
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the light flavours, which are contained in the
+   * jet particle group.
+   */
+  vector<long> nLightJetVec() const { return lastMatchboxXComb()->nLightJetVec(); }
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the heavy flavours, which are contained in the
+   * jet particle group.
+   */
+  vector<long> nHeavyJetVec() const { return lastMatchboxXComb()->nHeavyJetVec(); }
+
+  /**
+   * Return the vector that contains the PDG ids of 
+   * the light flavours, which are contained in the
+   * proton particle group.
+   */
+  vector<long> nLightProtonVec() const { return lastMatchboxXComb()->nLightProtonVec(); }
 
   /**
    * Get the dimensionality of the colour basis for this process.
@@ -228,7 +276,7 @@ public:
   const set<pair<size_t,size_t> >::const_iterator& lastSingularLimit() const { return lastMatchboxXComb()->lastSingularLimit(); }
 
   /**
-   * Get the Herwig++ StandardModel object
+   * Get the Herwig StandardModel object
    */
   Ptr<StandardModel>::tcptr hwStandardModel() const { return lastMatchboxXComb()->hwStandardModel(); }
 
@@ -250,8 +298,10 @@ public:
   /**
    * Fill the olp momentum vector
    */
-  void fillOLPMomenta(const vector<Lorentz5Momentum>& mm) const { 
-    lastMatchboxXComb()->fillOLPMomenta(mm);
+  void fillOLPMomenta(const vector<Lorentz5Momentum>& mm,
+		      const cPDVector& mePartonData,
+		      const map<long,Energy>& reshuffleMap) const { 
+    lastMatchboxXComb()->fillOLPMomenta(mm,mePartonData,reshuffleMap);
   }
 
 protected:
@@ -279,6 +329,11 @@ protected:
    * fillCrossingMap()
    */
   void crossingSign(double c) { lastMatchboxXComb()->crossingSign(c); }
+
+  /**
+   * The last renormalization scale
+   */
+  void lastRenormalizationScale(Energy2 lrs) { lastMatchboxXComb()->lastRenormalizationScale(lrs); }
 
   /**
    * The amplitude parton data.
@@ -324,6 +379,11 @@ protected:
   void lastTreeME2(double v) const { lastMatchboxXComb()->lastTreeME2(v); }
 
   /**
+   * The last tree-level matrix element squared
+   */
+  void lastLargeNME2(double v) const { lastMatchboxXComb()->lastLargeNME2(v); }
+
+  /**
    * The last one-loop/tree-level interference.
    */
   void lastOneLoopInterference(double v) const { lastMatchboxXComb()->lastOneLoopInterference(v); }
@@ -349,9 +409,35 @@ protected:
   void lastColourSpinCorrelator(const pair<int,int>& ij, Complex v) const { lastMatchboxXComb()->lastColourSpinCorrelator(ij,v); }
 
   /**
+   * The spin correlated matrix element.
+   */
+  void lastSpinCorrelator(const pair<int,int>& ij, Complex v) const { lastMatchboxXComb()->lastSpinCorrelator(ij,v); }
+
+  /**
    * Set the number of light flavours to be considered for this process.
    */
   void nLight(unsigned int n) { lastMatchboxXComb()->nLight(n); }
+
+  /**
+   * Set the elements of the vector that contains the PDG
+   * ids of the light flavours, which are contained in the
+   * jet particle group.
+   */
+  void nLightJetVec(int n) { lastMatchboxXComb()->nLightJetVec(n); }
+
+  /**
+   * Set the elements of the vector that contains the PDG
+   * ids of the heavy flavours, which are contained in the
+   * jet particle group.
+   */
+  void nHeavyJetVec(int n) { lastMatchboxXComb()->nHeavyJetVec(n); }
+
+  /**
+   * Set the elements of the vector that contains the PDG
+   * ids of the light flavours, which are contained in the
+   * proton particle group.
+   */
+  void nLightProtonVec(int n) { lastMatchboxXComb()->nLightProtonVec(n); }
 
   /**
    * Set the dimensionality of the colour basis for this process.
@@ -399,7 +485,7 @@ protected:
   set<pair<size_t,size_t> >::const_iterator& lastSingularLimit() { return lastMatchboxXComb()->lastSingularLimit(); }
 
   /**
-   * Set the Herwig++ StandardModel object
+   * Set the Herwig StandardModel object
    */
   void hwStandardModel(Ptr<StandardModel>::tcptr sm) { lastMatchboxXComb()->hwStandardModel(sm); }
 

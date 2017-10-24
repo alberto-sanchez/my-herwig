@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// SubtractedME.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// SubtractedME.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef HERWIG_SubtractedME_H
@@ -13,10 +13,10 @@
 //
 
 #include "ThePEG/MatrixElement/MEGroup.h"
-#include "Herwig++/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
-#include "Herwig++/MatrixElement/Matchbox/MatchboxFactory.fh"
+#include "Herwig/MatrixElement/Matchbox/Base/MatchboxMEBase.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/LastMatchboxXCombInfo.h"
+#include "Herwig/MatrixElement/Matchbox/MatchboxFactory.fh"
 
 namespace Herwig {
 
@@ -115,28 +115,11 @@ public:
   virtual bool subProcessGroups() const;
 
   /**
-   * Switch on subprocess groups
-   */
-  void setSubProcessGroups(bool on = true) { theSubProcessGroups = on; }
-
-  /**
    * Return true, if one of the dependent subprocesses should be
    * constructed in place of the one driven by the head matrix element
    * or a full subprocess group.
    */
-  virtual bool selectDependentSubProcess() const { return inclusive(); }
-
-  /**
-   * Return true, if the integral over the unresolved emission should be
-   * calculated.
-   */
-  bool inclusive() const;
-
-  /**
-   * Switch on calculating the integral over the unresolved emission should be
-   * calculated.
-   */
-  void setInclusive(bool on = true) { theInclusive = on; }
+  virtual bool selectDependentSubProcess() const { return false; }
 
   /**
    * Fill the projectors object of xcombs to choose subprocesses
@@ -147,14 +130,16 @@ public:
   /**
    * Return true, if projectors will be used
    */
-  virtual bool willProject() const { return inclusive() || virtualShowerSubtraction(); }
+  virtual bool willProject() const { 
+    return virtualShowerSubtraction() || loopSimSubtraction();
+  }
 
   /**
    * Return true, if this MEGroup will reweight the contributing cross
    * sections.
    */
   virtual bool groupReweighted() const { 
-    return inclusive() || showerApproximation();
+    return showerApproximation();
   }
 
   /**
@@ -212,6 +197,16 @@ public:
    * Return true, if the shower virtual contribution should be subtracted.
    */
   bool virtualShowerSubtraction() const { return theVirtualShowerSubtraction; }
+
+  /**
+   * Indicate that the loopsim matched virtual contribution should be subtracted.
+   */
+  void doLoopSimSubtraction();
+
+  /**
+   * Return true, if the loopsim matched virtual contribution should be subtracted.
+   */
+  bool loopSimSubtraction() const { return theLoopSimSubtraction; }
 
   //@}
 
@@ -360,6 +355,8 @@ public:
      * Write to file given name and invariant.
      */
     void dump(const std::string& prefix, 
+        const int& plottype,
+        const bool& scatterplot,
 	      const cPDVector& proc,
 	      int i, int j) const;
 
@@ -480,6 +477,11 @@ private:
   map<CollinearSubtractionIndex,SubtractionHistogram> collinearHistograms;
 
   /**
+   * names of files to which subtraction data is written for all phase space points individually
+   */
+  map<CollinearSubtractionIndex,string> fnamesCollinearSubtraction;
+
+  /**
    * Define the key for the soft subtraction data.
    */
   typedef pair<cPDVector,size_t> SoftSubtractionIndex;
@@ -488,6 +490,11 @@ private:
    * subtraction data for soft limits.
    */
   map<SoftSubtractionIndex,SubtractionHistogram> softHistograms;
+
+  /**
+   * names of files to which subtraction data is written for all phase space points individually
+   */
+  map<SoftSubtractionIndex,string> fnamesSoftSubtraction;
 
   /**
    * True, if the shower real emission contribution should be subtracted.
@@ -500,15 +507,9 @@ private:
   bool theVirtualShowerSubtraction;
 
   /**
-   * Switch on subprocess groups
+   * True, if the loopsim matched virtual contribution should be subtracted.
    */
-  bool theSubProcessGroups;
-
-  /**
-   * True, if the integral over the unresolved emission should be
-   * calculated.
-   */
-  bool theInclusive;
+  bool theLoopSimSubtraction;
 
 private:
 

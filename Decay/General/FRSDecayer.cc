@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// FRSDecayer.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// FRSDecayer.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -19,7 +19,8 @@
 #include "ThePEG/Helicity/WaveFunction/ScalarWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorWaveFunction.h"
 #include "ThePEG/Helicity/WaveFunction/SpinorBarWaveFunction.h"
-#include "Herwig++/Utilities/Kinematics.h"
+#include "Herwig/Utilities/Kinematics.h"
+#include "Herwig/Decay/GeneralDecayMatrixElement.h"
 
 using namespace Herwig;
 using namespace ThePEG::Helicity;
@@ -61,23 +62,24 @@ double FRSDecayer::me2(const int , const Particle & inpart,
 		       const ParticleVector & decay,
 		       MEOption meopt) const {
   bool ferm = inpart.id() > 0;
+  if(!ME())
+    ME(new_ptr(GeneralDecayMatrixElement(PDT::Spin1Half,PDT::Spin3Half,PDT::Spin0)));
   if(meopt==Initialize) {
     // spinors and rho
     if(ferm) {
       SpinorWaveFunction   ::calculateWaveFunctions(wave_,rho_,
 						    const_ptr_cast<tPPtr>(&inpart),
 						    incoming);
-      if(wave_[0].wave().Type() != u_spinortype)
+      if(wave_[0].wave().Type() != SpinorType::u)
 	for(unsigned int ix = 0; ix < 2; ++ix) wave_   [ix].conjugate();
     }
     else {
       SpinorBarWaveFunction::calculateWaveFunctions(wavebar_,rho_,
 						    const_ptr_cast<tPPtr>(&inpart),
 						    incoming);
-      if(wavebar_[0].wave().Type() != v_spinortype)
+      if(wavebar_[0].wave().Type() != SpinorType::v)
 	for(unsigned int ix = 0; ix < 2; ++ix) wavebar_[ix].conjugate();
     }
-    ME(DecayMatrixElement(PDT::Spin1Half,PDT::Spin3Half,PDT::Spin0));
   }
   // setup spin info when needed
   if(meopt==Terminate) {
@@ -104,13 +106,13 @@ double FRSDecayer::me2(const int , const Particle & inpart,
   Energy2 scale(sqr(inpart.mass()));
   for(unsigned int if1 = 0; if1 < 2; ++if1) {
     for(unsigned int if2 = 0; if2 < 4; ++if2) {
-      if(ferm) ME()(if1, if2, 0) = 
+      if(ferm) (*ME())(if1, if2, 0) = 
 		 abstractVertex_->evaluate(scale,wave_[if1],RSwavebar_[if2],scal);
-      else     ME()(if1, if2, 0) = 
+      else     (*ME())(if1, if2, 0) = 
 		 abstractVertex_->evaluate(scale,RSwave_[if2],wavebar_[if1],scal);
     }
   }
-  double output = (ME().contract(rho_)).real()/scale*UnitRemoval::E2;
+  double output = (ME()->contract(rho_)).real()/scale*UnitRemoval::E2;
   // colour and identical particle factors
   output *= colourFactor(inpart.dataPtr(),decay[0]->dataPtr(),
 			 decay[1]->dataPtr());

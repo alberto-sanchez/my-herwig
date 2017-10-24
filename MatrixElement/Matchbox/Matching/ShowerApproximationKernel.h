@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ShowerApproximationKernel.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// ShowerApproximationKernel.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_ShowerApproximationKernel_H
@@ -14,10 +14,10 @@
 
 #include "ThePEG/Handlers/HandlerBase.h"
 #include "ThePEG/Handlers/StandardXComb.h"
-#include "Herwig++/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/InvertedTildeKinematics.h"
-#include "Herwig++/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
-#include "Herwig++/Exsample2/exsample/exponential_generator.h"
+#include "Herwig/MatrixElement/Matchbox/Matching/ShowerApproximation.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/InvertedTildeKinematics.h"
+#include "Herwig/MatrixElement/Matchbox/Dipoles/SubtractionDipole.h"
+#include "Herwig/Sampling/exsample/exponential_generator.h"
 
 namespace Herwig {
 
@@ -34,6 +34,13 @@ class ShowerApproximationGenerator;
  *
  */
 class ShowerApproximationKernel: public HandlerBase {
+
+public:
+
+  /**
+   * Exception to communicate sampler maxtry events.
+   */
+  struct MaxTryException {};
 
 public:
 
@@ -185,6 +192,22 @@ public:
   void stopPresampling();
 
   /**
+   * Indicate that a veto with the given kernel value and overestimate has occured.
+   */
+  void veto(const vector<double>&, double, double) {
+    /** use born and real xcombs in here to figure out what we need to reweight;
+	it should have its kinematic variables completed at this step */
+  }
+
+  /**
+   * Indicate that an accept with the given kernel value and overestimate has occured.
+   */
+  void accept(const vector<double>&, double, double) {
+    /** use born and real xcombs in here to figure out what we need to reweight;
+	it should have its kinematic variables completed at this step */
+  }
+
+  /**
    * Return true, if currently being presampled
    */
   bool presampling() const { return thePresampling; }
@@ -202,6 +225,12 @@ public:
   unsigned long maxtry() const { return theMaxTry; }
 
   /**
+   * Return the number of accepted points after which the grid should
+   * be frozen
+   */
+  unsigned long freezeGrid() const { return theFreezeGrid; }
+
+  /**
    * Set the number of points to presample this
    * splitting generator.
    */
@@ -212,6 +241,12 @@ public:
    * to generate a splitting.
    */
   void maxtry(unsigned long p) { theMaxTry = p; }
+
+  /**
+   * Set the number of accepted points after which the grid should
+   * be frozen
+   */
+  void freezeGrid(unsigned long n) { theFreezeGrid = n; }
 
   /**
    * Evalute the splitting kernel.
@@ -225,7 +260,9 @@ public:
   int evolutionVariable() const {
     return
       nDimBorn() +
-      dipole()->invertedTildeKinematics()->evolutionVariable();
+      (showerApproximation()->showerInvertedTildeKinematics() ?
+       showerApproximation()->showerInvertedTildeKinematics()->evolutionVariable() :
+       dipole()->invertedTildeKinematics()->evolutionVariable());
   }
 
   /**
@@ -233,8 +270,16 @@ public:
    * random number corresponding to the pt cut.
    */
   double evolutionCutoff() const {
-    return dipole()->invertedTildeKinematics()->evolutionCutoff();
+    return 
+      showerApproximation()->showerInvertedTildeKinematics() ?
+      showerApproximation()->showerInvertedTildeKinematics()->evolutionCutoff() :
+      dipole()->invertedTildeKinematics()->evolutionCutoff();
   }
+
+  /**
+   * True, if sampler should apply compensation
+   */
+  void doCompensate(bool yes = true) { theDoCompensate = yes; }
 
 public:
 
@@ -366,6 +411,12 @@ private:
   unsigned long theMaxTry;
 
   /**
+   * Return the number of accepted points after which the grid should
+   * be frozen
+   */
+  unsigned long theFreezeGrid;
+
+  /**
    * The sampling flags
    */
   vector<bool> theFlags;
@@ -408,6 +459,11 @@ private:
    * The Sudakov sampler
    */
   ExponentialGeneratorPtr sampler;
+
+  /**
+   * True, if sampler should apply compensation
+   */
+  bool theDoCompensate;
 
   /**
    * The assignment operator is private and must never be called.

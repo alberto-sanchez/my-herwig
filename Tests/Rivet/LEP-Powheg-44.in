@@ -1,28 +1,38 @@
+# -*- ThePEG-repository -*-
 ##################################################
-# Rivet analyses at the Z pole
+# base parameters for LEP analyses
 ##################################################
-read LEPBase-Powheg.in
-
+read snippets/EECollider.in
 ##################################################
-# LEP physics parameters (override defaults) 
-##################################################
-cd /Herwig/Generators
-set LEPGenerator:EventHandler:LuminosityFunction:Energy 44.
-
-##################################################
-# select the analyses
-##################################################
-
-# OPAL/JADE jet rates at many energies
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 JADE_OPAL_2000_S4300807
-# JADE jet rates at many energies
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 JADE_1998_S3612880
-# tasso event shapes at various low energies
-insert /Herwig/Analysis/RivetAnalysis:Analyses 0 TASSO_1990_S2148048
-
-
-##################################################
-# Save run for later usage with 'Herwig++ run'
+# Technical parameters for this run
 ##################################################
 cd /Herwig/Generators
-saverun LEP-Powheg-44 LEPGenerator
+read Matchbox/Powheg-Default-ShowerAlphaSTune.in
+set EventGenerator:MaxErrors 1000000
+
+##################################################
+#  Switch off ISR
+##################################################
+set /Herwig/Particles/e-:PDF /Herwig/Partons/NoPDF
+set /Herwig/Particles/e+:PDF /Herwig/Partons/NoPDF
+
+##################################################
+#  Create the Herwig analysis
+##################################################
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+
+##################################################
+#  Use the NLO q qbar matrix element
+##################################################
+set /Herwig/Shower/ShowerHandler:HardEmission POWHEG
+insert /Herwig/MatrixElements/SubProcess:MatrixElements 0 /Herwig/MatrixElements/PowhegMEee2gZ2qq
+
+
+read LEP/LEP-44.in
+
+##################################################
+# Save run for later usage with 'Herwig run'
+##################################################
+cd /Herwig/Generators
+saverun LEP-Powheg-44 EventGenerator

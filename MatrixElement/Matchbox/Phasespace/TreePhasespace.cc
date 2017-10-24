@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TreePhasespace.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// TreePhasespace.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -11,6 +11,8 @@
 // functions of the TreePhasespace class.
 //
 
+#include <sstream> 
+#include <string> 
 #include "TreePhasespace.h"
 #include "ThePEG/Interface/ClassDocumentation.h"
 #include "ThePEG/Interface/Parameter.h"
@@ -20,6 +22,7 @@
 #include "ThePEG/Repository/UseRandom.h"
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/DiagramDrawer.h"
 
 
 #include "ThePEG/Persistency/PersistentOStream.h"
@@ -55,11 +58,10 @@ void TreePhasespace::setXComb(tStdXCombPtr xco) {
 
   if ( lastChannelsIterator == channelMap().end() ) {
     map<Ptr<Tree2toNDiagram>::ptr,pair<PhasespaceTree, PhasespaceTree> > channels;
-    for ( StandardXComb::DiagramVector::const_iterator d =
-	    lastXComb().diagrams().begin(); d != lastXComb().diagrams().end(); ++d ) {
+    for ( auto const & d : lastXComb().diagrams()) {
       PhasespaceTree tree;
       Ptr<Tree2toNDiagram>::ptr diag =
-	dynamic_ptr_cast<Ptr<Tree2toNDiagram>::ptr>(*d);
+	dynamic_ptr_cast<Ptr<Tree2toNDiagram>::ptr>(d);
       tree.setup(*diag);
       PhasespaceTree treeMirror;
       treeMirror.setupMirrored(*diag, diag->nSpace() - 1);
@@ -68,25 +70,28 @@ void TreePhasespace::setXComb(tStdXCombPtr xco) {
     channelMap()[lastXCombPtr()] = channels;
     lastChannelsIterator = channelMap().find(lastXCombPtr());
   }
-    
-  lastPhasespaceInfo.sHat = lastXComb().lastSHat();
-  lastPhasespaceInfo.sqrtSHat = sqrt(lastXComb().lastSHat());
-  lastPhasespaceInfo.weight = 1.;
 
 }
 
 double TreePhasespace::generateTwoToNKinematics(const double* random,
 						vector<Lorentz5Momentum>& momenta) {
 
+  lastPhasespaceInfo.sHat = lastXComb().lastSHat();
+  lastPhasespaceInfo.sqrtSHat = sqrt(lastXComb().lastSHat());
+  lastPhasespaceInfo.weight = 1.;
+
   size_t nchannels = lastXComb().diagrams().size();
   bool doMirror = (UseRandom::rnd() < 0.5) && theIncludeMirrored;
   map<Ptr<Tree2toNDiagram>::ptr,
       pair <PhasespaceHelpers::PhasespaceTree, PhasespaceHelpers::PhasespaceTree> >::iterator ds =
     lastChannels().begin();
-  advance(ds,(size_t)(random[0]*nchannels));
+
+  size_t i = (size_t)(random[0]*nchannels);
+  advance(ds,i);
+
   Ptr<Tree2toNDiagram>::ptr channel = ds->first;
   ++random;
-
+  
   lastPhasespaceInfo.rnd.numbers = random;
   lastPhasespaceInfo.rnd.nRnd = 3*momenta.size() - 10;
     
@@ -109,16 +114,13 @@ double TreePhasespace::generateTwoToNKinematics(const double* random,
   fillDiagramWeights(flatCut);
 
   double sum = 0.;
-  for ( map<Ptr<Tree2toNDiagram>::ptr,
-	  pair <PhasespaceHelpers::PhasespaceTree, PhasespaceHelpers::PhasespaceTree> >::const_iterator d
-	  = lastChannels().begin(); d != lastChannels().end(); ++d )
-    sum += diagramWeight(*(d->first));
+  for ( auto const & d : lastChannels())
+    sum += diagramWeight(*(d.first));
 
   double piWeight = pow(2.*Constants::pi,(double)(3*(momenta.size()-2)-4));
 
-  for ( vector<Lorentz5Momentum>::iterator k = momenta.begin();
-	k != momenta.end(); ++k )
-    k->rescaleRho();
+  for ( auto & k : momenta )
+    k.rescaleRho();
 
   return nchannels*lastPhasespaceInfo.weight*diagramWeight(*channel)/(sum*piWeight);
 
@@ -169,12 +171,12 @@ void TreePhasespace::persistentInput(PersistentIStream & is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<TreePhasespace,MatchboxPhasespace>
-  describeHerwigTreePhasespace("Herwig::TreePhasespace", "HwMatchbox.so");
+  describeHerwigTreePhasespace("Herwig::TreePhasespace", "Herwig.so");
 
 void TreePhasespace::Init() {
 
   static ClassDocumentation<TreePhasespace> documentation
-    ("TreePhasespace is a multichannel phasespace generator "
+    ("TreePhasespace is a multi-channel phase space generator "
      "adapting to singularity structures as determined from the matrix "
      "elements diagrams.");
 
@@ -183,6 +185,7 @@ void TreePhasespace::Init() {
     ("ChannelMap",
      "Set the object storing the channels.",
      &TreePhasespace::theChannelMap, false, false, true, false, false);
+  interfaceChannelMap.rank(-1);
 
 
   static Parameter<TreePhasespace,double> interfaceX0
@@ -215,16 +218,17 @@ void TreePhasespace::Init() {
     ("IncludeMirrored",
      "Choose whether to include mirrored diagrams for PS generation",
      &TreePhasespace::theIncludeMirrored, true, true, false);
-  static SwitchOption interfaceIncludeMirroredTrue
+  static SwitchOption interfaceIncludeMirroredYes
     (interfaceIncludeMirrored,
-     "True",
+     "Yes",
      "Use unmirrored and mirrored diagrams",
      true);
-  static SwitchOption interfaceIncludeMirroredFalse
+  static SwitchOption interfaceIncludeMirroredNo
     (interfaceIncludeMirrored,
-     "False",
+     "No",
      "Use only unmirrored diagrams",
      false);
+  interfaceIncludeMirrored.rank(-1);
 
 }
 

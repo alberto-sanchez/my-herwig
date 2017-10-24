@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// DipoleRepository.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// DipoleRepository.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 
@@ -17,9 +17,14 @@ vector<Ptr<SubtractionDipole>::ptr>& DipoleRepository::theDipoles(int id) {
   return theDipoles_[id];
 }
 
-vector<Ptr<MatchboxInsertionOperator>::ptr>& DipoleRepository::theInsertionOperators(int id) {
-  static map<int,vector<Ptr<MatchboxInsertionOperator>::ptr> > theInsertionOperators_;
-  return theInsertionOperators_[id];
+vector<Ptr<MatchboxInsertionOperator>::ptr>& DipoleRepository::theInsertionIOperators(int id) {
+  static map<int,vector<Ptr<MatchboxInsertionOperator>::ptr> > theInsertionIOperators_;
+  return theInsertionIOperators_[id];
+}
+
+vector<Ptr<MatchboxInsertionOperator>::ptr>& DipoleRepository::theInsertionPKOperators(int id) {
+  static map<int,vector<Ptr<MatchboxInsertionOperator>::ptr> > theInsertionPKOperators_;
+  return theInsertionPKOperators_[id];
 }
 
 
@@ -41,10 +46,17 @@ void DipoleRepository::setup() {
   }
 
   try {
-    BaseRepository::CheckDirectory(HERWIG_MatchboxInsertionOperators);
+    BaseRepository::CheckDirectory(HERWIG_MatchboxInsertionIOperators);
   } catch (RepositoryNoDirectory& d) {
     d.handle();
-    BaseRepository::CreateDirectory(HERWIG_MatchboxInsertionOperators);
+    BaseRepository::CreateDirectory(HERWIG_MatchboxInsertionIOperators);
+  }
+
+  try {
+    BaseRepository::CheckDirectory(HERWIG_MatchboxInsertionPKOperators);
+  } catch (RepositoryNoDirectory& d) {
+    d.handle();
+    BaseRepository::CreateDirectory(HERWIG_MatchboxInsertionPKOperators);
   }
 
   try {

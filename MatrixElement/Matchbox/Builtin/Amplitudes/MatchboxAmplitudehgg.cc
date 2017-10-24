@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// MatchboxAmplitudehgg.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// MatchboxAmplitudehgg.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -19,7 +19,7 @@
 #include "ThePEG/Repository/UseRandom.h"
 #include "ThePEG/Repository/EventGenerator.h"
 #include "ThePEG/Utilities/DescribeClass.h"
-#include "Herwig++/MatrixElement/Matchbox/Utility/SpinorHelicity.h"
+#include "Herwig/MatrixElement/Matchbox/Utility/SpinorHelicity.h"
 #include "ThePEG/Interface/Parameter.h"
 #include "ThePEG/Persistency/PersistentOStream.h"
 #include "ThePEG/Persistency/PersistentIStream.h"
@@ -44,13 +44,13 @@ IBPtr MatchboxAmplitudehgg::fullclone() const {
 
 void MatchboxAmplitudehgg::doinit() {
   MatchboxAmplitude::doinit();
-  MW = getParticleData(ParticleID::Wplus)->mass();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
   nPoints(3);
 }
 
 void MatchboxAmplitudehgg::doinitrun() {
   MatchboxAmplitude::doinitrun();
-  MW = getParticleData(ParticleID::Wplus)->mass();
+  MW = getParticleData(ParticleID::Wplus)->hardProcessMass();
   nPoints(3);
 }
 
@@ -92,7 +92,7 @@ Complex MatchboxAmplitudehgg::evaluate(size_t, const vector<int>& hel, Complex& 
   }
   // wrong assignement of the particles. g1 and g2 have to be different gluons.
   assert(g1!=g2);
-  double gw = sqrt(4*Constants::pi*SM().alphaEM()) / sqrt(SM().sin2ThetaW());
+  double gw = sqrt(4*Constants::pi*SM().alphaEMMZ()) / sqrt(SM().sin2ThetaW());
   double v= 2*MW/gw/sqrt(lastSHat()); 
   Complex c = Complex (0.,-1.*SM().alphaS()/3/Constants::pi/v); 
  
@@ -137,17 +137,20 @@ void MatchboxAmplitudehgg::persistentInput(PersistentIStream &is, int) {
 // arguments are correct (the class name and the name of the dynamically
 // loadable library where the class implementation can be found).
 DescribeClass<MatchboxAmplitudehgg,MatchboxAmplitude>
-  describeHerwigMatchboxAmplitudehgg("Herwig::MatchboxAmplitudehgg", "HwMatchbox.so");
+  describeHerwigMatchboxAmplitudehgg("Herwig::MatchboxAmplitudehgg", "HwMatchboxBuiltin.so");
 
 void MatchboxAmplitudehgg::Init() {
 
   static ClassDocumentation<MatchboxAmplitudehgg> documentation
     ("MatchboxAmplitudehgg");
+
+  /* // not used guess leftover from validation (mu2() variation)
   static Parameter<MatchboxAmplitudehgg,Energy> interfaceTHooft
     ("interfaceTHooft",
      "The THooft Mass.",
      &MatchboxAmplitudehgg::interfaceTHooft, GeV, 115.0*GeV, 0.0*GeV, 0*GeV,
      false, false, Interface::lowerlim);
+  */
 
 }
 

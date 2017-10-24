@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// TreePhasespace.h is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2012 The Herwig Collaboration
+// TreePhasespace.h is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 #ifndef Herwig_TreePhasespace_H
@@ -12,8 +12,8 @@
 // This is the declaration of the TreePhasespace class.
 //
 
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
-#include "Herwig++/MatrixElement/Matchbox/Phasespace/TreePhasespaceChannels.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/MatchboxPhasespace.h"
+#include "Herwig/MatrixElement/Matchbox/Phasespace/TreePhasespaceChannels.h"
 
 namespace Herwig {
 
@@ -23,7 +23,7 @@ using namespace ThePEG;
  * \ingroup Matchbox
  * \author Simon Platzer, Ken Arnold
  *
- * \brief TreePhasespace is a multichannel phasespace generator
+ * \brief TreePhasespace is a multi-channel phase space generator
  * adapting to singularity structures as determined from the matrix
  * elements diagrams.
  *
@@ -64,7 +64,7 @@ public:
    * Return the number of random numbers required to produce a given
    * multiplicity final state.
    */
-  virtual int nDim(int nFinal) const {
+  virtual int nDimPhasespace(int nFinal) const {
     if ( nFinal == 1 )
       return 1;
     return 3*(nFinal - 1); // one additional number needed for channel selection
@@ -161,7 +161,7 @@ private:
   lastChannelsIterator;
 
   /**
-   * The phasespace info object to be used.
+   * The phase space info object to be used.
    */
   PhasespaceHelpers::PhasespaceInfo lastPhasespaceInfo;
 
@@ -190,7 +190,7 @@ private:
   Energy Mc;
 
   /**
-   * Choose whether to also use mirrored phasespace generation
+   * Choose whether to also use mirrored phase space generation
    */
   bool theIncludeMirrored;
        

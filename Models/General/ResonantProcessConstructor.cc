@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// ResonantProcessConstructor.cc is a part of Herwig++ - A multi-purpose Monte Carlo event generator
-// Copyright (C) 2002-2011 The Herwig Collaboration
+// ResonantProcessConstructor.cc is a part of Herwig - A multi-purpose Monte Carlo event generator
+// Copyright (C) 2002-2017 The Herwig Collaboration
 //
-// Herwig++ is licenced under version 2 of the GPL, see COPYING for details.
+// Herwig is licenced under version 3 of the GPL, see COPYING for details.
 // Please respect the MCnet academic guidelines, see GUIDELINES for details.
 //
 //
@@ -134,26 +134,6 @@ void ResonantProcessConstructor::doinit() {
       << Exception::runerror;
 }
 
-namespace {
-  // Helper functor for find_if in duplicate function.
-  class SameIncomingAs {
-  public:
-    SameIncomingAs(tPDPair in) : a(in.first->id()), b(in.second->id())  {}
-    bool operator()(tPDPair ppair) const {
-      long id1(ppair.first->id()), id2(ppair.second->id());
-      return ( id1 == a && id2 == b ) || ( id1 == b && id2 == a );
-    }
-  private:
-    long a, b;
-  };
-
-  bool duplicateIncoming(tPDPair ppair,const vector<tPDPair> &incPairs) {
-    vector<tPDPair>::const_iterator it = 
-      find_if( incPairs.begin(), incPairs.end(), SameIncomingAs(ppair) );
-    return it != incPairs.end(); 
-  }
-}
-
 void ResonantProcessConstructor::constructDiagrams() {
   size_t ninc = incoming_.size() , ninter = intermediates_.size();
   if(ninc == 0 || ninter == 0  || !subProcess() ) return;
@@ -166,7 +146,7 @@ void ResonantProcessConstructor::constructDiagrams() {
 	  (inc.first->iSpin() == inc.second->iSpin() &&
 	   inc.first->id() < inc.second->id()) )
 	swap(inc.first, inc.second);
-      if( !duplicateIncoming(inc,incPairs) ) {
+      if( !HPC_helper::duplicateIncoming(inc,incPairs) ) {
 	incPairs.push_back(inc);
       }
     }
@@ -223,11 +203,12 @@ constructVertex2(IDPair in, VertexBasePtr vertex,
     }
   }
   else {
+    long idRes = !partc->CC() ? partc->id() : partc->CC()->id();
     for(size_t iv = 0; iv < nvertices; ++iv) {
       VBPtr vertex2 = model()->vertex(iv);
       if(vertex2->getNpoint() > 3) continue;
       for(unsigned int ix = 0;ix < 3; ++ix) {
-	vector<long> pdlist = vertex2->search(ix, partc->id());
+	vector<long> pdlist = vertex2->search(ix, idRes);
 	for(unsigned int iy=0;iy<pdlist.size();iy+=3) {
 	  long out1 = ix==0 ? pdlist.at(iy+1) : pdlist.at(iy  );
 	  long out2 = ix==2 ? pdlist.at(iy+1) : pdlist.at(iy+2);

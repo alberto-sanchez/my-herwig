@@ -60,6 +60,21 @@ struct gengetopt_args_info
   const char *debug_fpe_help; /**< @brief Enable floating point exceptions. help description.  */
   int quiet_flag;	/**< @brief Disable event counter. (default=off).  */
   const char *quiet_help; /**< @brief Disable event counter. help description.  */
+  int jobs_arg;	/**< @brief Number of jobs to run in parallel (max 10)..  */
+  char * jobs_orig;	/**< @brief Number of jobs to run in parallel (max 10). original value given at command line.  */
+  const char *jobs_help; /**< @brief Number of jobs to run in parallel (max 10). help description.  */
+  char * setupfile_arg;	/**< @brief An input file to modify run parameters..  */
+  char * setupfile_orig;	/**< @brief An input file to modify run parameters. original value given at command line.  */
+  const char *setupfile_help; /**< @brief An input file to modify run parameters. help description.  */
+  long jobsize_arg;	/**< @brief The number of subprocesses to integrate per job (build only)..  */
+  char * jobsize_orig;	/**< @brief The number of subprocesses to integrate per job (build only). original value given at command line.  */
+  const char *jobsize_help; /**< @brief The number of subprocesses to integrate per job (build only). help description.  */
+  long maxjobs_arg;	/**< @brief The maximum number of integration jobs to be created (build only)..  */
+  char * maxjobs_orig;	/**< @brief The maximum number of integration jobs to be created (build only). original value given at command line.  */
+  const char *maxjobs_help; /**< @brief The maximum number of integration jobs to be created (build only). help description.  */
+  char * jobid_arg;	/**< @brief Integrate the given integration job..  */
+  char * jobid_orig;	/**< @brief Integrate the given integration job. original value given at command line.  */
+  const char *jobid_help; /**< @brief Integrate the given integration job. help description.  */
   char ** append_read_arg;	/**< @brief Append a search path for the read command..  */
   char ** append_read_orig;	/**< @brief Append a search path for the read command. original value given at command line.  */
   unsigned int append_read_min; /**< @brief Append a search path for the read command.'s minimum occurreces */
@@ -97,6 +112,11 @@ struct gengetopt_args_info
   unsigned int debug_given ;	/**< @brief Whether debug was given.  */
   unsigned int debug_fpe_given ;	/**< @brief Whether debug-fpe was given.  */
   unsigned int quiet_given ;	/**< @brief Whether quiet was given.  */
+  unsigned int jobs_given ;	/**< @brief Whether jobs was given.  */
+  unsigned int setupfile_given ;	/**< @brief Whether setupfile was given.  */
+  unsigned int jobsize_given ;	/**< @brief Whether jobsize was given.  */
+  unsigned int maxjobs_given ;	/**< @brief Whether maxjobs was given.  */
+  unsigned int jobid_given ;	/**< @brief Whether jobid was given.  */
   unsigned int append_read_given ;	/**< @brief Whether append-read was given.  */
   unsigned int prepend_read_given ;	/**< @brief Whether prepend-read was given.  */
   unsigned int append_given ;	/**< @brief Whether append was given.  */
