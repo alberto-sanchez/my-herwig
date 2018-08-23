@@ -1,18 +1,19 @@
+# -*- ThePEG-repository -*-
 ##################################################
 ## Collider type
 ##################################################
-read Matchbox/EECollider.in
+read snippets/Matchbox.in
+read snippets/EECollider.in
 ##################################################
 ## Process selection
 ##################################################
+## Model assumptions
+read Matchbox/StandardModelLike.in
+read Matchbox/DiagonalCKM.in
 ## Set the order of the couplings
 cd /Herwig/MatrixElements/Matchbox
 set Factory:OrderInAlphaS 0
 set Factory:OrderInAlphaEW 2
-##################################################
-## Matrix element library selection
-##################################################
-read Matchbox/MadGraph-OpenLoops.in
 
 ##################################################
 ## Scale choice
@@ -48,7 +49,10 @@ do /Herwig/MatrixElements/Matchbox/Factory:ProductionMode
 
 ## Select the process
 cd /Herwig/MatrixElements/Matchbox
-do Factory:Process e- e+ -> j j
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+do Factory:Process e- e+ -> j j 
+
 
 read LEP/LEP-133.in
 

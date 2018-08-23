@@ -1,18 +1,19 @@
+# -*- ThePEG-repository -*-
 ##################################################
 ## Collider type
 ##################################################
-read Matchbox/EECollider.in
+read snippets/Matchbox.in
+read snippets/EECollider.in
 ##################################################
 ## Process selection
 ##################################################
+## Model assumptions
+read Matchbox/StandardModelLike.in
+read Matchbox/DiagonalCKM.in
 ## Set the order of the couplings
 cd /Herwig/MatrixElements/Matchbox
 set Factory:OrderInAlphaS 0
 set Factory:OrderInAlphaEW 2
-##################################################
-## Matrix element library selection
-##################################################
-read Matchbox/MadGraph-OpenLoops.in
 
 ##################################################
 ## Scale choice
@@ -48,10 +49,19 @@ do /Herwig/MatrixElements/Matchbox/Factory:ProductionMode
 
 ## Select the process
 cd /Herwig/MatrixElements/Matchbox
-do Factory:Process e- e+ -> u ubar
-do Factory:Process e- e+ -> d dbar
-do Factory:Process e- e+ -> c cbar
-do Factory:Process e- e+ -> s sbar
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+do Factory:Process e- e+ -> u ubar 
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+do Factory:Process e- e+ -> d dbar 
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+do Factory:Process e- e+ -> c cbar 
+set Factory:OrderInAlphaS 0
+set Factory:OrderInAlphaEW 2
+do Factory:Process e- e+ -> s sbar 
+
 
 read BFactory/BFactory-10.45.in
 

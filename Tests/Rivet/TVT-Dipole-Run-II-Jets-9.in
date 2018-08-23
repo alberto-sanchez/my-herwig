@@ -1,0 +1,43 @@
+# -*- ThePEG-repository -*-
+##################################################
+# Technical parameters for this run
+##################################################
+read snippets/PPCollider.in
+cd /Herwig/Generators
+set EventGenerator:MaxErrors 1000000
+set EventGenerator:EventHandler:StatLevel Full
+set /Herwig/Decays/DecayHandler:MaxLifeTime 10*mm
+
+##################################################
+## Shower and flavour scheme selection.
+## Should be empty unless using the Dipole Shower.
+##################################################
+set /Herwig/EventHandlers/EventHandler:CascadeHandler /Herwig/DipoleShower/DipoleShowerHandler
+read Matchbox/MCatNLO-Dipole-HardAlphaSTune.in
+
+read snippets/DipoleShowerFiveFlavours.in
+
+##################################################
+#  Create the Herwig analysis
+##################################################
+cd /Herwig/Generators
+create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
+insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+set /Herwig/Analysis/RivetAnalysis:Debug No
+cd /Herwig/MatrixElements
+set /Herwig/Generators/EventGenerator:EventHandler:BeamB /Herwig/Particles/pbar-
+set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 1960.0
+insert SubProcess:MatrixElements[0] MEQCD2to2
+set /Herwig/UnderlyingEvent/MPIHandler:IdenticalToUE 0
+set /Herwig/Cuts/JetKtCut:MinKT 30.
+set /Herwig/Cuts/Cuts:MHatMin 300.*GeV
+
+
+cd /Herwig/Generators
+read TVT/TVT-Run-II-Jets-9.in
+
+##################################################
+# Save run for later usage with 'Herwig run'
+##################################################
+cd /Herwig/Generators
+saverun TVT-Dipole-Run-II-Jets-9 EventGenerator

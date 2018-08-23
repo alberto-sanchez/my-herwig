@@ -1,11 +1,16 @@
+# -*- ThePEG-repository -*-
 ##################################################
 ## Collider type
 ##################################################
-read Matchbox/PPCollider.in
+read snippets/Matchbox.in
+read snippets/PPCollider.in
 
 ##################################################
 ## Matrix element library selection
 ##################################################
+## Model assumptions
+read Matchbox/StandardModelLike.in
+read Matchbox/DiagonalCKM.in
 read Matchbox/MadGraph-OpenLoops.in
 
 ##################################################
@@ -27,7 +32,7 @@ read Matchbox/MMHT2014.in
 create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
 insert /Herwig/Generators/EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
 set /Herwig/Analysis/RivetAnalysis:Debug No
-
+set /Herwig/Decays/DecayHandler:MaxLifeTime 10*mm
 ##################################################
 ## Save the generator
 ##################################################
@@ -39,13 +44,13 @@ cd /Herwig/MatrixElements/Matchbox
 set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 8000.0
 set Factory:OrderInAlphaS 2
 set Factory:OrderInAlphaEW 2
-do Factory:Process p p e+ e- j j
+do Factory:Process p p e+ e- j j 
 set Factory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/LeptonPairMassScale
 set  /Herwig/Cuts/Cuts:JetFinder  /Herwig/Cuts/JetFinder
 insert  /Herwig/Cuts/Cuts:MultiCuts 0  /Herwig/Cuts/JetCuts
 insert  /Herwig/Cuts/JetCuts:JetRegions 0  /Herwig/Cuts/FirstJet
-insert  /Herwig/Cuts/JetCuts:JetRegions 0  /Herwig/Cuts/SecondJet
 set /Herwig/Cuts/FirstJet:PtMin 40.*GeV
+insert /Herwig/Cuts/JetCuts:JetRegions 0  /Herwig/Cuts/SecondJet
 set /Herwig/Cuts/SecondJet:PtMin 30.*GeV
 set /Herwig/Cuts/LeptonPairMassCut:MinMass 60*GeV
 set /Herwig/Cuts/LeptonPairMassCut:MaxMass 120*GeV

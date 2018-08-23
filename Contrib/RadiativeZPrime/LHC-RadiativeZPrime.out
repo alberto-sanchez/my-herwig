@@ -1,0 +1,27 @@
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>> Toolkit for HEP Event Generation - ThePEG 1076572832d4 (release-2-1) <<<<
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+>> Herwig 964101764b25 (herwig-7-1) / ThePEG 1076572832d4 (release-2-1)
+
+==============================================================================
+Statistics for event handler 'EventHandler':
+                                       generated    number of    Cross-section
+                                          events     attempts             (nb)
+==============================================================================
+Total (from   weighted events): including vetoed events            10.3(1)e-03
+==============================================================================
+Total (from unweighted events):             1000         1000      10.3(1)e-03
+==============================================================================
+Per matrix element breakdown:
+MEddbar2Z'02gammaZ0                            0            0                0
+MEddbar2Z'02e-e+                             399          399       4.1(2)e-03
+MEuubar2Z'02gammaZ0                            0            0                0
+MEuubar2Z'02e-e+                             487          487       5.0(2)e-03
+MEssbar2Z'02gammaZ0                            0            0                0
+MEssbar2Z'02e-e+                              63           63      0.65(8)e-03
+MEccbar2Z'02gammaZ0                            0            0                0
+MEccbar2Z'02e-e+                              35           35      0.36(6)e-03
+MEbbbar2Z'02gammaZ0                            0            0                0
+MEbbbar2Z'02e-e+                              16           16      0.16(4)e-03
+==============================================================================
