@@ -48,9 +48,6 @@ cd /Herwig/Generators
 # LHC physics parameters (override defaults here) 
 ##################################################
 
-# Intrinsic pT tune extrapolated to LHC energy
-set /Herwig/Shower/ShowerHandler:IntrinsicPtGaussian 2.2*GeV
-
 ##################################################
 #
 # This section contains the user defined settings
@@ -91,15 +88,6 @@ insert HPConstructor:Outgoing 1 /Herwig/Particles/tbar
 #insert /Herwig/Analysis/Rivet:Analyses 0 XXX_2015_ABC123
 #read snippets/HepMC.in
 #set /Herwig/Analysis/HepMC:PrintEvent NNN
-
-##################################################
-## prepare for Rivet analysis or HepMC output
-## when running at fixed order (NO shower)
-##################################################
-#read snippets/RivetFixedOrder.in
-#insert /Herwig/Analysis/RivetFixedOrder:Analyses 0 XXX_2015_ABC123
-#read snippets/HepMCFixedOrder.in
-#set /Herwig/Analysis/HepMCFixedOrder:PrintEvent NNN
 
 # Other parameters for run
 cd /Herwig/Generators

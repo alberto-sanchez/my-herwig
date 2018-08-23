@@ -1,23 +1,27 @@
-# -*- ThePEG-repository -*-
 ##################################################
 # Technical parameters for this run
 ##################################################
-read snippets/PPCollider.in
 cd /Herwig/Generators
-set EventGenerator:MaxErrors 1000000
-set EventGenerator:EventHandler:StatLevel Full
-set /Herwig/Decays/DecayHandler:MaxLifeTime 10*mm
+set LHCGenerator:NumberOfEvents 10000000
+set LHCGenerator:RandomNumberGenerator:Seed 31122001
+set LHCGenerator:PrintEvent 10
+set LHCGenerator:MaxErrors 1000000
+set LHCGenerator:EventHandler:StatLevel Full
 ##################################################
 #  Create the Herwig analysis
 ##################################################
 create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
-insert EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
+insert LHCGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
 set /Herwig/Analysis/RivetAnalysis:Debug No
+
+mv /Herwig/Generators/LHCGenerator /Herwig/Generators/EventGenerator
 cd /Herwig/MatrixElements
 set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 7000.0
-set /Herwig/Shower/ShowerHandler:IntrinsicPtGaussian 2.2*GeV
-read snippets/MB.in
-read snippets/Diffraction.in
+insert SimpleQCD:MatrixElements[0] MEMinBias
+set /Herwig/UnderlyingEvent/MPIHandler:IdenticalToUE 0
+set /Herwig/Generators/EventGenerator:EventHandler:Cuts /Herwig/Cuts/MinBiasCuts
+create Herwig::MPIXSecReweighter /Herwig/Generators/MPIXSecReweighter
+insert /Herwig/Generators/EventGenerator:EventHandler:PostSubProcessHandlers 0 /Herwig/Generators/MPIXSecReweighter
 
 
 cd /Herwig/Generators

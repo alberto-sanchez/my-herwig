@@ -1,16 +1,11 @@
-# -*- ThePEG-repository -*-
 ##################################################
 ## Collider type
 ##################################################
-read snippets/Matchbox.in
-read snippets/PPCollider.in
+read Matchbox/PPCollider.in
 
 ##################################################
 ## Matrix element library selection
 ##################################################
-## Model assumptions
-read Matchbox/StandardModelLike.in
-read Matchbox/DiagonalCKM.in
 read Matchbox/MadGraph-OpenLoops.in
 
 ##################################################
@@ -18,7 +13,7 @@ read Matchbox/MadGraph-OpenLoops.in
 ## Please also see flavour scheme settings
 ## towards the end of the input file.
 ##################################################
-read Matchbox/LO-DipoleShower.in
+read Matchbox/MCatNLO-DipoleShower.in
 
 ##################################################
 ## PDF choice
@@ -33,7 +28,7 @@ read Matchbox/MMHT2014.in
 create ThePEG::RivetAnalysis /Herwig/Analysis/RivetAnalysis RivetAnalysis.so
 insert /Herwig/Generators/EventGenerator:AnalysisHandlers 0 /Herwig/Analysis/RivetAnalysis
 set /Herwig/Analysis/RivetAnalysis:Debug No
-set /Herwig/Decays/DecayHandler:MaxLifeTime 10*mm
+
 ##################################################
 ## Save the generator
 ##################################################
@@ -46,9 +41,9 @@ set /Herwig/Generators/EventGenerator:EventHandler:BeamB /Herwig/Particles/pbar-
 set /Herwig/Generators/EventGenerator:EventHandler:LuminosityFunction:Energy 1960.0
 set Factory:OrderInAlphaS 0
 set Factory:OrderInAlphaEW 2
-do Factory:Process p pbar mu+ mu- 
+do Factory:Process p pbar mu+ mu-
 set Factory:ScaleChoice /Herwig/MatrixElements/Matchbox/Scales/LeptonPairMassScale
-set /Herwig/Cuts/LeptonPairMassCut:MinMass 150*GeV
+set /Herwig/Cuts/LeptonPairMassCut:MinMass 150.*GeV
 set /Herwig/Cuts/LeptonPairMassCut:MaxMass 600*GeV
 
 
